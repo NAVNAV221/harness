@@ -11,6 +11,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Memory, clip, parseFrontmatter } from "../src/memory/index.ts";
+import { findCredentialSource } from "../src/config.ts";
 
 let root: string;
 before(() => {
@@ -198,5 +199,26 @@ describe("read and search", () => {
     const memory = fresh("search-empty");
     entity(memory, "services", "graph", "the API");
     assert.deepEqual(memory.search("kubernetes"), []);
+  });
+});
+
+describe("findCredentialSource", () => {
+  test("names the environment variable it found", () => {
+    assert.equal(findCredentialSource({ ANTHROPIC_API_KEY: "sk-ant-x" }, "/nope"), "ANTHROPIC_API_KEY");
+  });
+
+  test("ignores an empty or whitespace-only key", () => {
+    // An unset secret often arrives as "" rather than absent. Treating that as
+    // credentials means the warning never fires for the people who need it.
+    assert.equal(findCredentialSource({ ANTHROPIC_API_KEY: "" }, "/nope"), undefined);
+    assert.equal(findCredentialSource({ OPENAI_API_KEY: "   " }, "/nope"), undefined);
+  });
+
+  test("falls back to pi's auth file", () => {
+    assert.equal(findCredentialSource({}, "/agent", (p) => p === "/agent/auth.json"), "/agent/auth.json");
+  });
+
+  test("returns nothing when there is nothing, which is what triggers the warning", () => {
+    assert.equal(findCredentialSource({}, "/agent", () => false), undefined);
   });
 });

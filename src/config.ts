@@ -5,7 +5,8 @@
  * into something with profiles and validation, keep the exported shape stable so
  * the rest of the harness does not care where the values came from.
  */
-import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 /**
  * Load .env if it is there. Env vars already in the shell win, and a missing
@@ -61,4 +62,31 @@ export function loadConfig(root = process.cwd()): HarnessConfig {
     // Trim this list to the smallest set your harness actually needs.
     tools: ["read", "grep", "bash", "memory_search", "memory_read", "memory_write"],
   };
+}
+
+/**
+ * Where this process could get model credentials from, or undefined if nowhere.
+ *
+ * pi's own failure message says to run `/login`, which is its interactive TUI
+ * command. A container has no TUI, so a deployer following that advice goes
+ * nowhere. Checking at boot lets us say the container-shaped version instead of
+ * letting the first message fail with the wrong instruction.
+ */
+export function findCredentialSource(
+  env: NodeJS.ProcessEnv,
+  agentDir: string,
+  fileExists: (path: string) => boolean = existsSync,
+): string | undefined {
+  const keys = [
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "AWS_ACCESS_KEY_ID",
+    "AWS_BEARER_TOKEN_BEDROCK",
+  ];
+  const found = keys.find((key) => (env[key] ?? "").trim().length > 0);
+  if (found) return found;
+  const auth = join(agentDir, "auth.json");
+  return fileExists(auth) ? auth : undefined;
 }

@@ -4,7 +4,8 @@
  *
  * Read this file top to bottom and you have read the whole control flow.
  */
-import { loadConfig } from "./config.ts";
+import { findCredentialSource, loadConfig } from "./config.ts";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { Memory } from "./memory/index.ts";
 import { Harness } from "./harness.ts";
 import { createAdapter } from "./messaging/index.ts";
@@ -12,6 +13,22 @@ import { reflect } from "./reflection/index.ts";
 
 async function main(): Promise<void> {
   const config = loadConfig();
+
+  // Warn, do not exit: an exotic provider setup may authenticate in a way this
+  // check does not know about. But say it now rather than on the first message.
+  if (!findCredentialSource(process.env, getAgentDir())) {
+    console.warn(
+      [
+        "  ! no model credentials found.",
+        `    Looked for a provider key in the environment, and ${getAgentDir()}/auth.json.`,
+        "    On a laptop: run `pi` once to log in, or put a key in .env.",
+        "    In a container: inject one through your platform's secrets. pi will tell",
+        "    you to run /login, which needs a terminal this process does not have.",
+        "",
+      ].join("\n"),
+    );
+  }
+
   const memory = new Memory(config.memoryDir);
   const adapter = createAdapter(config.adapter);
   const harness = new Harness(config, memory, adapter);
