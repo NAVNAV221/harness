@@ -1,0 +1,17 @@
+node_modules/
+.env
+*.log
+
+# Session state and raw logs are local to each operator, not part of the template.
+memory/sessions/*
+!memory/sessions/.gitkeep
+memory/transcripts/*
+!memory/transcripts/.gitkeep
+
+# Reflection proposals are generated. Keep the example so forkers see the format.
+reflection/proposals/*
+!reflection/proposals/.gitkeep
+!reflection/proposals/EXAMPLE.md
+
+# scratch
+.tmp/

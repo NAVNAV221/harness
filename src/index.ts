@@ -1,0 +1,47 @@
+/**
+ * Entry point. Boot the adapter, hand every message to the harness, reflect on
+ * the way out.
+ *
+ * Read this file top to bottom and you have read the whole control flow.
+ */
+import { loadConfig } from "./config.ts";
+import { Memory } from "./memory/index.ts";
+import { Harness } from "./harness.ts";
+import { createAdapter } from "./messaging/index.ts";
+import { reflect } from "./reflection/index.ts";
+
+async function main(): Promise<void> {
+  const config = loadConfig();
+  const memory = new Memory(config.memoryDir);
+  const adapter = createAdapter(config.adapter);
+  const harness = new Harness(config, memory, adapter);
+
+  let shuttingDown = false;
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    for (const conversation of harness.openConversations) {
+      const result = await reflect(config, memory, conversation).catch((error) => {
+        console.error(`  reflection failed: ${error instanceof Error ? error.message : String(error)}`);
+        return undefined;
+      });
+      if (result) console.log(`\n  reflection proposal written -> ${result.path}`);
+    }
+    await harness.dispose();
+    await adapter.stop();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", () => void shutdown());
+  process.on("SIGTERM", () => void shutdown());
+
+  await adapter.start({
+    onMessage: (message) => harness.handleMessage(message),
+    onShutdown: shutdown,
+  });
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.stack : error);
+  process.exit(1);
+});
