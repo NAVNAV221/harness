@@ -82,7 +82,7 @@ function main(): void {
     console.log(`  memory: ${block.action}d ${block.file}`);
   }
 
-  for (const name of ["system prompt", "tools", "skills"]) {
+  for (const name of ["capability gaps", "system prompt", "tools", "skills"]) {
     const body = section(markdown, name);
     if (!body) continue;
     console.log(`\n  ${name} (yours to apply by hand):`);

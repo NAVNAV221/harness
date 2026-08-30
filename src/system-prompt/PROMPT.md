@@ -1,6 +1,6 @@
 # Build prompt: system prompt
 
-Read `spec/system-prompt.md`. If it is not there, run `interview/01-system-prompt.md`
+Read `spec/system-prompt.md`. If it is not there, run `/harness:interview system-prompt`
 first - do not write a system prompt from your own assumptions about what this
 harness is for.
 

@@ -21,7 +21,7 @@ prompt, tools, memory, messaging, guardrails, skills and reflection.
   `spec/<module>.md`, and `src/<module>/PROMPT.md` reads that spec. Add a module
   and you add all three.
 - **Prompts are agent-agnostic.** They are instructions in markdown. The
-  `.claude/commands/` files are thin wrappers that read them. Never put content
+  `commands/` files are thin wrappers that read them. Never put content
   in a slash command that is not in the prompt file it points at.
 - **Guardrails are code.** Anything enforceable belongs in
   `src/guardrails/policy.ts`, not in `SYSTEM_PROMPT.md`.

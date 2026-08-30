@@ -23,8 +23,8 @@ having to write it.
 
 Open this repo in Claude Code (or pi, or Codex) and run:
 
-    /harness-interview            all modules, in order
-    /harness-interview messaging  just one
+    /harness:interview            all modules, in order
+    /harness:interview messaging  just one
 
 Or paste the contents of any `interview/*.md` into whatever agent you use. The
 files are written to work either way - they are instructions to an agent, not a

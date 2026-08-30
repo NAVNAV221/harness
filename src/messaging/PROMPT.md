@@ -1,6 +1,6 @@
 # Build prompt: messaging
 
-Read `spec/messaging.md`. If it is not there, run `interview/04-messaging.md`
+Read `spec/messaging.md`. If it is not there, run `/harness:interview messaging`
 first. Do not build an adapter for a platform nobody named.
 
 Then read `src/messaging/types.ts` and `src/messaging/cli.ts` before writing a

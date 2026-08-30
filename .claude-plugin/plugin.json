@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "harness",
+  "description": "Build your own agent harness. An interview asks what yours is for, your answers become a spec, and the build prompts read that spec so the code they write is yours and not generic. Run /harness:init to scaffold one.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Nave Ben Naim",
+    "url": "https://navnav221.github.io"
+  },
+  "homepage": "https://navnav221.github.io/learn/harness/",
+  "repository": "https://github.com/NAVNAV221/harness",
+  "license": "MIT",
+  "keywords": ["harness", "agents", "llm", "scaffold", "pi"]
+}

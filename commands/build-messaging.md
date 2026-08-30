@@ -8,7 +8,7 @@ Read `src/messaging/PROMPT.md` and follow it exactly.
 Platform: $ARGUMENTS
 
 If `spec/messaging.md` does not exist, stop and tell me to run
-`/harness-interview messaging` first. If it exists but names a different platform
+`/harness:interview messaging` first. If it exists but names a different platform
 than the one above, ask me which one wins before writing anything.
 
 Before you write code, tell me the three things about this platform that will

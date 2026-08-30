@@ -1,5 +1,5 @@
 ---
-name: harness-skeleton
+name: harness
 summary: this repo; a forkable harness with a prompt behind every extension point
 status: active
 repo: local

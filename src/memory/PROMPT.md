@@ -1,6 +1,6 @@
 # Build prompt: memory
 
-Read `spec/memory.md`. If it is not there, run `interview/03-memory.md` first.
+Read `spec/memory.md`. If it is not there, run `/harness:interview memory` first.
 
 Memory here is markdown files on disk, deliberately. Before you replace that with
 a database or a vector store, say out loud what it buys: files are diffable,

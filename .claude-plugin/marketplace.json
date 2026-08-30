@@ -1,0 +1,15 @@
+{
+  "name": "harness",
+  "owner": {
+    "name": "Nave Ben Naim",
+    "url": "https://navnav221.github.io"
+  },
+  "description": "A forkable harness skeleton, and the interview that makes it yours.",
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./",
+      "description": "The five parts of a harness, with an interview and a build prompt behind every part you are meant to replace. Companion to navnav221.github.io/learn/harness/"
+    }
+  ]
+}

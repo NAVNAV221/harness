@@ -44,6 +44,10 @@ export class Memory {
       if (!statSync(typeDir).isDirectory()) continue;
       for (const file of readdirSync(typeDir)) {
         if (!file.endsWith(".md")) continue;
+        // A template is a contract, not a fact. It shows a human what a file of
+        // this type looks like; it must never reach the model's index, where its
+        // placeholder summary is pure noise on every turn.
+        if (file === "TEMPLATE.md" || file.startsWith("_")) continue;
         const abs = join(typeDir, file);
         const { fields } = parseFrontmatter(readFileSync(abs, "utf8"));
         const id = file.slice(0, -3);
@@ -68,27 +72,52 @@ export class Memory {
    */
   renderIndex(): string {
     const entities = this.listEntities();
-    if (entities.length === 0) {
-      return "Memory is empty. Use memory_write to record something worth keeping.";
-    }
-    const byType = new Map<string, Entity[]>();
-    for (const e of entities) {
-      const list = byType.get(e.type) ?? [];
-      list.push(e);
-      byType.set(e.type, list);
-    }
     const lines: string[] = [];
-    for (const [type, list] of [...byType].sort()) {
-      lines.push(`${type}:`);
-      for (const e of list) {
-        lines.push(`  ${e.path} - ${e.name}${e.summary ? `: ${e.summary}` : ""}`);
+
+    if (entities.length === 0) {
+      // A harness on its first day. The operator's notes are the only thing that
+      // says what memory is even for, so this is where they matter most - which
+      // is why they are not skipped here. The empty type folders are shown too:
+      // they tell the model what shape a memory file is supposed to take before
+      // a single one exists.
+      lines.push("No entities recorded yet. Use memory_write to record the first one.");
+      const types = this.entityTypes();
+      if (types.length > 0) {
+        lines.push("", `Types already carved out, still empty: ${types.join(", ")}`);
+      }
+    } else {
+      const byType = new Map<string, Entity[]>();
+      for (const e of entities) {
+        const list = byType.get(e.type) ?? [];
+        list.push(e);
+        byType.set(e.type, list);
+      }
+      for (const [type, list] of [...byType].sort()) {
+        lines.push(`${type}:`);
+        for (const e of list) {
+          lines.push(`  ${e.path} - ${e.name}${e.summary ? `: ${e.summary}` : ""}`);
+        }
+      }
+      for (const type of this.entityTypes()) {
+        if (!byType.has(type)) lines.push(`${type}: (empty)`);
       }
     }
+
     const notes = join(this.dir, "INDEX.md");
     if (existsSync(notes)) {
-      lines.push("", "Operator notes (memory/INDEX.md):", readFileSync(notes, "utf8").trim());
+      const body = readFileSync(notes, "utf8").trim();
+      if (body) lines.push("", "Operator notes (memory/INDEX.md):", body);
     }
     return lines.join("\n");
+  }
+
+  /** Every folder under entities/, including the ones nobody has filled in yet. */
+  entityTypes(): string[] {
+    const root = join(this.dir, "entities");
+    if (!existsSync(root)) return [];
+    return readdirSync(root)
+      .filter((name) => statSync(join(root, name)).isDirectory())
+      .sort();
   }
 
   /** Read one memory file. Clips loudly rather than silently. */

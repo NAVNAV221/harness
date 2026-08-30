@@ -1,6 +1,6 @@
 # Build prompt: skills
 
-Read `spec/skills.md`. If it is not there, run `interview/06-skills.md` first.
+Read `spec/skills.md`. If it is not there, run `/harness:interview skills` first.
 
 Read `skills/team-digest/SKILL.md` for the shape. Then create
 `skills/<name>/SKILL.md` for each skill in the spec.

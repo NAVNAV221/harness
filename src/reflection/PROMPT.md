@@ -1,6 +1,6 @@
 # Build prompt: reflection
 
-Read `spec/reflection.md`. If it is not there, run `interview/07-reflection.md`
+Read `spec/reflection.md`. If it is not there, run `/harness:interview reflection`
 first - and be willing to conclude they should not enable this module at all. A
 harness that runs twice a week does not produce enough sessions for reflection to
 say anything true, and proposals nobody reads are a directory that grows.

@@ -1,6 +1,6 @@
 # Build prompt: guardrails
 
-Read `spec/guardrails.md`. If it is not there, run `interview/05-guardrails.md`
+Read `spec/guardrails.md`. If it is not there, run `/harness:interview guardrails`
 first.
 
 Then rewrite `src/guardrails/policy.ts` to match the spec exactly.

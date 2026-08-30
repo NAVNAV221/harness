@@ -29,6 +29,16 @@ You are reviewing a finished session of an AI harness, to propose improvements.
 Output format, exactly. Omit any section that has nothing worth saying. Saying
 nothing is a valid and common outcome - do not invent findings to fill sections.
 
+## capability gaps
+For each request in this session that the harness could not fulfil because a tool
+did not exist, or that it answered worse than it would have with one:
+- <tool name>: wanted <n> times. <what was actually asked, in the person's words>
+
+This is the highest-value thing a young harness produces, so do not skip it when
+it applies. It is the difference between guessing what to build next and knowing.
+Name a tool only if the session named it, or the system prompt's "Not built yet"
+section lists it. Never invent a tool name to fill this in.
+
 ## memory
 For each durable fact learned that memory does not already hold:
 \`\`\`file:entities/<type>/<id>.md action:create|replace
@@ -51,7 +61,9 @@ For each rule that would have prevented a mistake in this session:
 - <skill name>: <the repeated task it would collapse, in one line>
 
 ## nothing to change
-Include this line alone when the session was unremarkable.
+Include this line alone when the session was unremarkable. A session where the
+harness was asked for something it could not do is never unremarkable: that
+belongs in capability gaps.
 
 Rules:
 - Cite the session. A proposal with no moment behind it is noise.

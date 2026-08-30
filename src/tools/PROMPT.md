@@ -1,6 +1,6 @@
 # Build prompt: tools
 
-Read `spec/tools.md`. If it is not there, run `interview/02-tools.md` first.
+Read `spec/tools.md`. If it is not there, run `/harness:interview tools` first.
 
 Then add each tool to `src/tools/`, one file per coherent group, and register it
 in `src/tools/index.ts`. Follow `memory-tools.ts` exactly: `defineTool` from

@@ -1,7 +1,7 @@
 /**
  * Adapter registry. One line per platform.
  *
- * Run /build-messaging after the interview and your platform gets added here.
+ * Run /harness:build-messaging after the interview and your platform gets added here.
  */
 import type { MessagingAdapter } from "./types.ts";
 import { CliAdapter } from "./cli.ts";
@@ -18,7 +18,7 @@ export function createAdapter(name: string): MessagingAdapter {
   if (!factory) {
     throw new Error(
       `Unknown adapter "${name}". Available: ${Object.keys(adapters).join(", ")}.\n` +
-        `To add one: answer interview/04-messaging.md, then run /build-messaging.`,
+        `To add one: answer interview/04-messaging.md, then run /harness:build-messaging.`,
     );
   }
   return factory();

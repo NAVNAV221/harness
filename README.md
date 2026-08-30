@@ -1,33 +1,49 @@
-# harness-skeleton
+<div align="center">
 
-A harness is the software your model runs inside. Not the model, not the
-framework wrapped around it. The thing that decides what the model sees, what it
-can do, and when it stops.
+<img src="docs/logo.png" width="96" alt="harness">
 
-This repo is a working one, small enough to read in an afternoon, with an
-interview and a build prompt behind every part you are meant to replace.
+# harness
 
-Companion to [How can I build a Harness?](https://navnav221.github.io/learn/harness/).
+**Build your own agent harness. Three questions, and it is yours.**
 
-## Run it first
+[![license](https://img.shields.io/badge/license-MIT-black?style=flat-square)](LICENSE)
+[![built on pi](https://img.shields.io/badge/built%20on-pi-6b46c1?style=flat-square)](https://github.com/badlogic/pi-mono)
+[![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757?style=flat-square)](https://docs.claude.com/en/docs/claude-code)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white)](package.json)
+[![status](https://img.shields.io/badge/status-early-orange?style=flat-square)](#what-this-does-not-do-yet)
+
+</div>
+
+A harness is the software your model runs inside: the thing that decides what the
+model sees, what it can do, and when it stops. This is a working one, small enough
+to read in an afternoon, with an interview and a build prompt behind every part
+you are meant to replace.
+
+Companion to [How can I build a Harness?](https://navnav221.github.io/learn/harness/)
+
+![The skeleton and your harness are the same nine parts. On the left they ship hollow: system prompt, tools, memory, messaging, guardrails, skills, reflection, plus the agentic loop and translation layer that pi already wrote. In the middle, interview/04-messaging.md asks you which platform, what counts as one conversation, and how a human approves a tool call; your answers become spec/messaging.md, which src/messaging/PROMPT.md reads to build the adapter. On the right the same nine parts, now filled in with your own answers.](docs/harness.png)
+
+## Start
+
+```
+/plugin marketplace add NAVNAV221/harness
+/plugin install harness
+/harness:init
+```
+
+Four questions, and the harness is yours: your job in the system prompt, your
+worst case as a real rule in the guardrail policy, your capabilities drafted into
+a spec. No clone, no npm, no API key to get that far.
 
 ```bash
-git clone <your fork> && cd harness-skeleton
-npm install
-cp .env.example .env      # add an ANTHROPIC_API_KEY, or run `pi` once to log in
-npm start
+npm install && npm start     # when you want to watch it run
 ```
 
+## What that gets you
+
+**It enforces rules in code, not in the prompt.**
+
 ```
-harness ready (adapter: cli). Type a message, or /exit.
-
-you> who is on the team?
-
-harness> Based on memory, two people are on record:
-         - Dana, on-call for the platform, reviews infra changes
-         - Nave, operator of this harness
-         That is the full list memory has.
-
 you> use bash to run: rm -rf /tmp/scratch
 
   ! guardrail: destructive or outward-facing shell command - approval required
@@ -35,121 +51,82 @@ you> use bash to run: rm -rf /tmp/scratch
     approve? [y/N] n
 
 harness> That command was declined - it wasn't run.
-
-you> /exit
-
-  reflection proposal written -> reflection/proposals/2026-08-30T19-44-29.md
 ```
 
-That is a real transcript. Four subsystems fired in it:
+**It does not claim capabilities it does not have.**
 
-- **memory**, answering the first question from the index without opening a file
-- **tools and the loop**, deciding to call bash at all
-- **guardrails**, stopping the call in code and telling the model why, so it does
-  not retry
-- **reflection**, reading the session on the way out and writing a proposal
+```
+you> why did request abc123 fail at 09:14?
 
-Each of them is about thirty lines, and each is meant to be replaced.
+harness> I can't investigate that yet: `query_traces` and `query_logs` do not
+         exist, so I can't determine its failure cause.
+         Run `/harness:build-tools` to build them.
+```
 
-## The five parts, and who owns them
+**It tells you what to build next, from what you actually asked for.**
 
-| Part | Owner | Where |
-|---|---|---|
-| 1. System prompt | you | `src/system-prompt/` |
-| 2. Tools | you | `src/tools/` |
-| 3. Agentic loop | pi | `learn/loop.ts` builds it by hand once |
-| 4. Translation layer | pi | `learn/providers/` builds it by hand once |
-| 5. Memory and context | both | `src/memory/`, plus the per-turn hook in `src/harness.ts` |
+```
+$ cat reflection/proposals/2026-08-30T21-18-32.md
 
-Parts 3 and 4 are pi's, and you should still build them yourself once. That is
-what `learn/` is for:
+## capability gaps
+- query_traces: wanted 1 time. "why did request abc123 fail at 09:14?"
+- gh_pr_read:   wanted 1 time. "just review PR 412 for me"
+```
+
+Every block above is real output, not a mockup.
+
+## Make it yours
+
+Generic prompts produce generic code. So the build prompts do not guess: they read
+a spec that you produced by being interviewed.
+
+```
+interview/04-messaging.md  ->  spec/messaging.md  ->  src/messaging/PROMPT.md  ->  code
+questions it asks you          your answers            reads your answers
+```
+
+`/harness:init` asks four of those questions. The rest arrive one module at a time:
+
+```
+/harness:status                  what is specified, what is built, what is default
+/harness:interview messaging     the full questions for one module
+/harness:build-messaging slack   implement it, from your spec
+```
+
+`/plugin update` improves the questions you get asked. It never touches the code
+you own.
+
+Not in Claude Code? Clone the repo and paste `interview/00-harness.md` into your
+agent. These are markdown instructions to an agent, not a Claude Code format.
+
+## What pi owns
+
+[pi](https://github.com/badlogic/pi-mono) owns the agentic loop and the translation
+layer. You own everything else. You should still write both yourself once:
 
 ```bash
 npm run learn:loop "what does this harness do?"
-npm run learn:loop -- --openai "same question, other vendor"
 ```
 
-Forty lines of loop with every exit condition named, and one interface with two
-adapters behind it. Swap the provider, watch the loop not change. Then read
-`learn/README.md` for which pi API replaces each piece.
+`learn/` is a loop with all six exit conditions named, and one interface with two
+provider adapters behind it. It is there to be read, not to run in production.
 
-Beyond the five parts, this repo also ships the three things a harness needs the
-moment it stops being a demo: a messaging seam, a guardrail layer, and a
-reflection loop.
+## What this does not do yet
 
-## How you customise it
+- **One messaging adapter exists: the CLI.** Slack, Mattermost and Discord are a
+  prompt and an interface, not an implementation. `/harness:build-messaging` writes
+  yours.
+- **`learn/`'s provider adapters have never run against a live API.** They compile
+  and they are there to be read.
+- **Reflection proposes, it never applies.** Memory changes need
+  `npm run reflect:accept <id> --apply`; prompt and skill changes are yours to make
+  by hand, on purpose.
 
-A prompt that says "build a messaging adapter" produces an adapter nobody wanted.
-So the prompts here are not generic: they read a spec you produced by being
-interviewed.
+## More
 
-```
-interview/04-messaging.md    questions your agent asks you
-        |
-        v
-spec/messaging.md            your answers, as a contract
-        |
-        v
-src/messaging/PROMPT.md      the build prompt, which reads the spec
-        |
-        v
-working code
-```
-
-In Claude Code:
-
-```
-/harness-interview            all modules, in order
-/harness-interview messaging  just one
-/build-messaging slack        implement from the spec
-/harness-status               what is specified, built, and still default
-```
-
-In anything else: paste `interview/04-messaging.md` into your agent, let it
-interview you, then paste `src/messaging/PROMPT.md`. The files are instructions
-to an agent, not a tool-specific format. Nothing here is locked to Claude Code.
-
-Start with `/harness-interview` and nothing else. What your harness is for
-decides everything downstream, and it is the one question no prompt can answer
-for you.
-
-## What is in here
-
-```
-src/
-  system-prompt/  SYSTEM_PROMPT.md is rules only; index.ts adds what changes per turn
-  tools/          three memory tools, written to be told apart from each other
-  memory/         markdown on disk: entities, sessions, transcripts, and a clip() that never lies
-  messaging/      MessagingAdapter, one working CLI implementation, a registry
-  guardrails/     policy.ts is the entire policy; index.ts is the only enforcement point
-  reflection/     end of session, proposes; a human accepts
-  harness.ts      where the five parts are wired to each other
-  index.ts        the whole control flow, top to bottom
-
-interview/        questions that produce specs
-spec/             your answers (example/ shows the target)
-skills/           SKILL.md procedures, loaded on demand by pi
-memory/           seed entities; delete them before pointing this at a real team
-learn/            the loop and the translation layer, built by hand
-docs/             which part is which, and what pi already does for you
-```
-
-## Two things worth knowing before you fork
-
-**Guardrails run in code, not in the prompt.** A rule in
-`SYSTEM_PROMPT.md` is a request. A rule in `src/guardrails/policy.ts` runs on
-every tool call whether the model cooperates or not. When you can move a rule
-from the first to the second, move it.
-
-**Reflection proposes, humans accept.** An agent that edits its own system prompt
-unattended has no stable definition of correct: each run grades itself against
-rules it wrote on the previous run. The human on the accept step is what makes
-the loop converge instead of drift.
-
-## Built on
-
-[pi](https://github.com/badlogic/pi-mono) provides the loop, the translation
-layer, tool dispatch, sessions, extensions and skills. This repo provides the
-parts pi deliberately has no opinion about, and the prompts to make them yours.
+- [docs/five-parts.md](docs/five-parts.md) - each part, and where it lives here
+- [interview/README.md](interview/README.md) - why the interview exists at all
+- [A Smart Model Doesn't Make Up for Bad Context](https://navnav221.github.io/2026-06-21-smart-model-bad-context/) - why the memory module matters most
+- [How can I build a Harness?](https://navnav221.github.io/learn/harness/), on [navnav221.github.io](https://navnav221.github.io/)
 
 MIT.
