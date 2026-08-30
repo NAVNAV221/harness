@@ -9,16 +9,17 @@
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "reflect:accept": "tsx src/reflection/accept.ts",
-    "learn:loop": "tsx learn/loop.ts"
+    "learn:loop": "tsx learn/loop.ts",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.84.4",
     "@earendil-works/pi-coding-agent": "^0.84.4",
+    "tsx": "^4.23.13",
     "typebox": "^1.1.24"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "tsx": "^4.23.13",
     "typescript": "^5.9.3"
   },
   "engines": {

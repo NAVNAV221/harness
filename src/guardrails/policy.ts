@@ -22,7 +22,11 @@ export interface GuardrailPolicy {
 
 export const policy: GuardrailPolicy = {
   deny: [
-    { tool: "bash", match: /\brm\s+-rf\s+\/(?:\s|$)/, reason: "recursive delete of /" },
+    // Matched against JSON.stringify(input), so the command is always followed by
+    // a quote - never whitespace or end-of-string. Anchoring on those made this
+    // rule silently never fire. The lookahead asks the real question instead: is
+    // the path just "/", or does a path continue after it?
+    { tool: "bash", match: /\brm\s+-[rf]{2}\s+\/(?![A-Za-z0-9._~*-])/, reason: "recursive delete of /" },
     { tool: "bash", match: /\b(curl|wget)\b[^|]*\|\s*(ba)?sh/, reason: "pipe-to-shell from the network" },
     { tool: "memory_write", match: /\.\./, reason: "path traversal out of the memory directory" },
   ],

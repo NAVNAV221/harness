@@ -21,6 +21,36 @@ export interface Verdict {
   reason?: string;
 }
 
+/** A rule shaped like the entries in `deny` and `requireApproval`. */
+export interface Rule {
+  tool: string;
+  match?: RegExp;
+  reason: string;
+}
+
+/**
+ * Find the first rule that applies to a tool call.
+ *
+ * Exported on purpose: this single line decides whether a destructive call runs,
+ * and it should be provable without booting a model. See test/guardrails.test.ts.
+ */
+export function matchRule<T extends Rule>(
+  rules: readonly T[],
+  toolName: string,
+  renderedInput: string,
+): T | undefined {
+  return rules.find((rule) => {
+    if (rule.tool !== toolName) return false;
+    if (!rule.match) return true;
+    // A /g regex carries lastIndex between .test() calls, so the same input
+    // would match, then not match, then match. A guardrail that fires every
+    // other time is worse than one that never fires, because you will see it
+    // work once and trust it.
+    if (rule.match.global) rule.match.lastIndex = 0;
+    return rule.match.test(renderedInput);
+  });
+}
+
 /** Inbox-side checks. Shared across every conversation in the process. */
 export class Gatekeeper {
   private hits = new Map<string, number[]>();
@@ -77,9 +107,7 @@ export function createGuardrailExtension(opts: {
       pi.on("tool_call", async (event) => {
         const rendered = gatekeeper.redact(JSON.stringify(event.input));
 
-        const denied = policy.deny.find(
-          (r) => r.tool === event.toolName && (!r.match || r.match.test(rendered)),
-        );
+        const denied = matchRule(policy.deny, event.toolName, rendered);
         if (denied) {
           onDecision?.({ tool: event.toolName, action: "denied", reason: denied.reason });
           return {
@@ -88,9 +116,7 @@ export function createGuardrailExtension(opts: {
           };
         }
 
-        const needsApproval = policy.requireApproval.find(
-          (r) => r.tool === event.toolName && (!r.match || r.match.test(rendered)),
-        );
+        const needsApproval = matchRule(policy.requireApproval, event.toolName, rendered);
         if (needsApproval) {
           // Any failure to get a clear yes is a no. A broken approval path must
           // never become an approval: that is the difference between a guardrail

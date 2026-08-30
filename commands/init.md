@@ -1,11 +1,11 @@
 ---
-description: Scaffold a harness into this directory, shaped by three questions
+description: Scaffold a harness into this directory, shaped by four questions
 argument-hint: "[optional: what the harness is for, in one line]"
 ---
 
 Scaffold a working harness into the current directory and make it theirs.
 
-Three questions, a draft they correct, then files on disk. Nothing else. The full
+Four questions, a draft they correct, then files on disk. Nothing else. The full
 interviews come later, per module, when they hit a limit.
 
 The plugin's own copy of the skeleton is at `${CLAUDE_PLUGIN_ROOT}`. That is the
@@ -107,8 +107,9 @@ Copy from `${CLAUDE_PLUGIN_ROOT}` into the target directory.
 **Copy these** - they own and will modify them:
 
 ```
-src/  memory/  skills/  spec/  learn/  reflection/proposals/.gitkeep
+src/  test/  memory/  skills/  spec/  learn/  deploy/  reflection/proposals/.gitkeep
 package.json  tsconfig.json  .env.example  .gitignore
+Dockerfile  .dockerignore  compose.yaml
 ```
 
 **Do not copy these** - the plugin provides them, and copying them means they
@@ -207,6 +208,7 @@ Then give them these next steps, and no others:
 
 ```
 npm install && npm start     # watch it run. This pulls pi, which is large.
+npm test                     # the guardrail and memory tests, already passing
 /harness:status              # what is specified, what is built, what is default
 ```
 

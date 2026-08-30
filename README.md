@@ -4,7 +4,7 @@
 
 # harness
 
-**Build your own agent harness. Three questions, and it is yours.**
+**Build your own agent harness. Four questions, and it is yours.**
 
 [![license](https://img.shields.io/badge/license-MIT-black?style=flat-square)](LICENSE)
 [![built on pi](https://img.shields.io/badge/built%20on-pi-6b46c1?style=flat-square)](https://github.com/badlogic/pi-mono)
@@ -37,6 +37,7 @@ a spec. No clone, no npm, no API key to get that far.
 
 ```bash
 npm install && npm start     # when you want to watch it run
+npm test                     # 63 tests over memory, guardrails and reflection
 ```
 
 ## What that gets you
@@ -121,6 +122,9 @@ provider adapters behind it. It is there to be read, not to run in production.
 - **Reflection proposes, it never applies.** Memory changes need
   `npm run reflect:accept <id> --apply`; prompt and skill changes are yours to make
   by hand, on purpose.
+- **The shipped `Dockerfile` is not deployable on its own.** The CLI adapter reads
+  stdin, so a deployed harness needs a real messaging adapter first.
+  `/harness:interview deployment` says so before it asks you anything else.
 
 ## More
 

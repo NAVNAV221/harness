@@ -53,7 +53,10 @@ export function loadConfig(root = process.cwd()): HarnessConfig {
     adapter: process.env.HARNESS_ADAPTER ?? "cli",
     memoryDir: resolve(root, process.env.HARNESS_MEMORY_DIR ?? "./memory"),
     skillsDir: resolve(root, "./skills"),
-    proposalsDir: resolve(root, "./reflection/proposals"),
+    // Deliberately env-configurable: in a container the repo root is ephemeral,
+    // and a reflection proposal nobody can read after a restart is a proposal
+    // that never existed. Point this at the same volume as memory.
+    proposalsDir: resolve(root, process.env.HARNESS_PROPOSALS_DIR ?? "./reflection/proposals"),
     // "bash" is here on purpose: it is what the guardrail demo blocks.
     // Trim this list to the smallest set your harness actually needs.
     tools: ["read", "grep", "bash", "memory_search", "memory_read", "memory_write"],

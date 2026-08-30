@@ -30,7 +30,7 @@ export function parseMemoryBlocks(markdown: string): Block[] {
   return blocks;
 }
 
-function section(markdown: string, name: string): string {
+export function section(markdown: string, name: string): string {
   const heading = `\n## ${name}\n`;
   const start = markdown.indexOf(heading);
   if (start === -1) return "";
@@ -95,4 +95,5 @@ function main(): void {
   console.log();
 }
 
-main();
+// Only run as a script, never on import from a test.
+if (process.argv[1]?.endsWith("accept.ts")) main();

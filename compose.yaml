@@ -1,0 +1,37 @@
+# The deployed shape: a harness that runs unattended, talking to a real channel.
+#
+# This does NOT work with the CLI adapter. The CLI adapter reads stdin, and a
+# service with no stdin and `restart: unless-stopped` is a crash loop. To try the
+# image interactively instead:
+#
+#   docker build -t harness .
+#   docker run -it --rm --env-file .env -v harness-data:/data harness
+#
+# Once /harness:build-messaging has given you a real adapter, this file is the
+# deployment.
+
+services:
+  harness:
+    build: .
+    env_file:
+      - .env
+    environment:
+      # Whatever /harness:build-messaging registered in src/messaging/index.ts.
+      HARNESS_ADAPTER: ${HARNESS_ADAPTER:?set HARNESS_ADAPTER to your adapter, not cli}
+    volumes:
+      # Everything the harness learns. Without this, every restart is amnesia
+      # and every reflection proposal is lost before anyone reads it.
+      - harness-data:/data
+    restart: unless-stopped
+    # The model picks the commands; the container is the blast radius.
+    read_only: false
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  harness-data:

@@ -1,0 +1,12 @@
+node_modules
+.git
+.env
+
+# Never bake these into an image. memory/ is what your harness knows about real
+# people, and a proposal is a transcript of a real session. An image gets pushed
+# to a registry; these do not belong in one.
+memory
+reflection/proposals
+
+docs
+*.log
