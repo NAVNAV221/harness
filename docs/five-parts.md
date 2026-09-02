@@ -1,14 +1,14 @@
-# The five parts, mapped to this repo
+# The nine harness parts, mapped to this repo
 
-From [How can I build a Harness?](https://navnav221.github.io/learn/harness/).
+From [What it took to turn a coding agent into an R&D teammate](https://navnav221.github.io/learn/harness/).
 An agent is a model, a harness, and an environment it can act on. The model is
 not yours to build. The environment is where the effects happen. The harness is
 the part you own.
 
 ## 1. System prompt
 
-Instructions injected on every single turn. First-day instructions for a new
-hire, not documentation.
+Instructions that define the model's behavior for the session. Think of them as
+first-day instructions for a new hire, not documentation.
 
 - Static rules: `src/system-prompt/SYSTEM_PROMPT.md`
 - Per-turn assembly: `buildSystemPrompt()` in `src/system-prompt/index.ts`
@@ -66,10 +66,10 @@ proposal is accepted.
 
 Interview: `interview/03-memory.md`. Build prompt: `src/memory/PROMPT.md`.
 
-## Beyond the five
+## The four production additions
 
-These are not in the article. They are what a harness needs the moment it stops
-being a demo.
+The five core parts make an agent run. These four become necessary when it
+serves a team instead of one private session.
 
 **Messaging** (`src/messaging/`) - the seam between a harness and the place your
 team already is. One interface, one working CLI implementation, a prompt for
