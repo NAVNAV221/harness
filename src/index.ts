@@ -29,7 +29,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const memory = new Memory(config.memoryDir);
+  const memory = new Memory(config.memoryDir, config.memoryNotes);
   const adapter = createAdapter(config.adapter);
   const harness = new Harness(config, memory, adapter);
 

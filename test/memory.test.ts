@@ -126,6 +126,31 @@ describe("renderIndex", () => {
     assert.match(index, /services\/ and incidents\/ go here\./);
   });
 
+  test("a private memory dir with no INDEX.md falls back to the repo's notes", () => {
+    // The regression this locks down: pointing HARNESS_MEMORY_DIR outside the repo,
+    // which is what you do once memory holds a real person, dropped the committed
+    // notes without a word.
+    const repoNotes = join(root, "repo-INDEX.md");
+    writeFileSync(repoNotes, "commitments/ hold a due date.", "utf8");
+    const memory = new Memory(join(root, "private-no-index"), repoNotes);
+    assert.match(memory.renderIndex(), /commitments\/ hold a due date\./);
+  });
+
+  test("the memory dir's own INDEX.md wins over the fallback", () => {
+    const repoNotes = join(root, "repo-INDEX-2.md");
+    writeFileSync(repoNotes, "committed notes", "utf8");
+    const memory = new Memory(join(root, "private-with-index"), repoNotes);
+    writeFileSync(join(memory.dir, "INDEX.md"), "private notes", "utf8");
+    const index = memory.renderIndex();
+    assert.match(index, /private notes/);
+    assert.doesNotMatch(index, /committed notes/);
+  });
+
+  test("a missing fallback file is not an error", () => {
+    const memory = new Memory(join(root, "no-notes-anywhere"), join(root, "nope.md"));
+    assert.doesNotMatch(memory.renderIndex(), /Operator notes/);
+  });
+
   test("shows type folders that exist but are empty, so the model knows the shape", () => {
     const memory = fresh("empty-types");
     mkdirSync(join(memory.dir, "entities", "services"), { recursive: true });

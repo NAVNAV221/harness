@@ -17,7 +17,16 @@ const MAX_SEARCH_HITS = 12;
 export class Memory {
   readonly dir: string;
 
-  constructor(dir: string) {
+  /**
+   * @param fallbackNotes The repo's committed `memory/INDEX.md`. Memory that holds
+   * a real person's data belongs outside the repo (HARNESS_MEMORY_DIR), and that
+   * directory starts with no INDEX.md of its own. Without a fallback, moving memory
+   * somewhere private silently drops the operator's notes about what memory is for.
+   */
+  constructor(
+    dir: string,
+    private readonly fallbackNotes?: string,
+  ) {
     this.dir = dir;
     for (const sub of ["entities", "sessions", "transcripts"]) {
       mkdirSync(join(dir, sub), { recursive: true });
@@ -103,8 +112,10 @@ export class Memory {
       }
     }
 
-    const notes = join(this.dir, "INDEX.md");
-    if (existsSync(notes)) {
+    // The memory dir's own notes win, so a private dir can say something the
+    // committed ones should not.
+    const notes = [join(this.dir, "INDEX.md"), this.fallbackNotes].find((p) => p && existsSync(p));
+    if (notes) {
       const body = readFileSync(notes, "utf8").trim();
       if (body) lines.push("", "Operator notes (memory/INDEX.md):", body);
     }

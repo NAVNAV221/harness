@@ -61,7 +61,7 @@ function main(): void {
 
   const prompt = readFileSync(join(import.meta.dirname, "../system-prompt/SYSTEM_PROMPT.md"), "utf8");
   const { kept: markdown, dropped } = dropGuardrailChanges(readFileSync(path, "utf8"), neverRules(prompt));
-  const memory = new Memory(config.memoryDir);
+  const memory = new Memory(config.memoryDir, config.memoryNotes);
   const blocks = parseMemoryBlocks(markdown);
 
   console.log(`\nProposal ${id}\n`);

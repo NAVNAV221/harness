@@ -29,6 +29,8 @@ export interface HarnessConfig {
   adapter: string;
   /** Where entities, sessions and transcripts live. */
   memoryDir: string;
+  /** The committed memory/INDEX.md, read when memoryDir has none of its own. */
+  memoryNotes: string;
   /** Where skills live. pi loads these with progressive disclosure. */
   skillsDir: string;
   /** Where reflection writes its proposals. */
@@ -53,6 +55,7 @@ export function loadConfig(root = process.cwd()): HarnessConfig {
     model: parseModel(process.env.HARNESS_MODEL),
     adapter: process.env.HARNESS_ADAPTER ?? "cli",
     memoryDir: resolve(root, process.env.HARNESS_MEMORY_DIR ?? "./memory"),
+    memoryNotes: resolve(root, "./memory/INDEX.md"),
     skillsDir: resolve(root, "./skills"),
     // Deliberately env-configurable: in a container the repo root is ephemeral,
     // and a reflection proposal nobody can read after a restart is a proposal
