@@ -39,3 +39,16 @@ later interview reads the harness spec before asking anything.
 You do not have to do all of them. A harness with a sharp system prompt, three
 tools and no memory is a real harness. A harness with nine modules and no
 purpose is a folder.
+
+## Optional modules
+
+Two interviews add something the skeleton does not ship, and each starts by
+asking whether this harness needs it at all:
+
+    08-deployment   run it unattended: approval path, persistence, credentials
+                    ->  /harness:build-deployment
+    09-eventlog     an append-only, searchable log of what the harness did and
+                    read, which derived memory cites  ->  /harness:build-eventlog
+
+Skip them until the harness spec gives a reason. `/harness:status` reports them
+as not chosen rather than as gaps.
