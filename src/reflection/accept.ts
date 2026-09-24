@@ -8,11 +8,16 @@
  * directory. System prompt and skill proposals are printed for you to act on,
  * because those change how the harness behaves everywhere, forever, and that
  * should cost you a deliberate edit.
+ *
+ * Anything that touches a guardrail is refused here as well as in reflect(). A
+ * proposal written before that filter existed, or edited by hand afterwards,
+ * still has to get past this one.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve, sep } from "node:path";
 import { loadConfig } from "../config.ts";
 import { Memory } from "../memory/index.ts";
+import { dropGuardrailChanges, neverRules } from "./guard.ts";
 
 interface Block {
   file: string;
@@ -54,11 +59,18 @@ function main(): void {
     process.exit(1);
   }
 
-  const markdown = readFileSync(path, "utf8");
+  const prompt = readFileSync(join(import.meta.dirname, "../system-prompt/SYSTEM_PROMPT.md"), "utf8");
+  const { kept: markdown, dropped } = dropGuardrailChanges(readFileSync(path, "utf8"), neverRules(prompt));
   const memory = new Memory(config.memoryDir);
   const blocks = parseMemoryBlocks(markdown);
 
   console.log(`\nProposal ${id}\n`);
+  for (const d of dropped) {
+    console.log(`  REFUSED in ${d.section}: ${d.why}`);
+    console.log(`    ${d.text.split("\n")[0]}`);
+  }
+  const note = section(markdown, "dropped");
+  if (note) console.log(`  ${note}`);
 
   if (blocks.length === 0) {
     console.log("  memory: nothing proposed");

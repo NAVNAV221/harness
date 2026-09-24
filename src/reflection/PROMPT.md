@@ -20,8 +20,12 @@ Constraints:
   noise trains the operator to stop reading proposals at all.
 - "Nothing to change" must stay a valid and common outcome. If reflection finds
   something every time, it is inventing.
-- Never let it propose widening a guardrail. If the spec asks for that anyway,
-  tell me why that is a bad idea before you build it.
+- Never let it propose widening a guardrail. `src/reflection/guard.ts` drops any
+  proposal that loosens a Never rule or names the policy, before it is written,
+  and `accept.ts` refuses the same things again. If you add a Never rule format
+  or a new kind of proposal, keep both layers able to see it. If the spec asks
+  for reflection to widen guardrails anyway, tell me why that is a bad idea
+  before you build it.
 - Automatic application stays limited to paths under `memory/`, and never to
   `src/`, `spec/` or `skills/`. If the spec wants more, make me say it twice.
 - The accept script must stay able to show a diff without applying it. The

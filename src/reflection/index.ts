@@ -9,7 +9,7 @@
  * grades itself against rules it wrote on the previous run. Keeping a human on
  * the accept step is what makes the loop converge instead of drift.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   createAgentSession,
@@ -22,6 +22,7 @@ import {
 import type { HarnessConfig } from "../config.ts";
 import type { Conversation } from "../harness.ts";
 import type { Memory } from "../memory/index.ts";
+import { dropGuardrailChanges, neverRules, renderDropped } from "./guard.ts";
 
 const REFLECTION_RULES = `
 You are reviewing a finished session of an AI harness, to propose improvements.
@@ -69,7 +70,15 @@ Rules:
 - Cite the session. A proposal with no moment behind it is noise.
 - Never propose a rule that only restates a rule already in the system prompt.
 - Never propose remembering something true only today.
+- Never propose loosening a Never rule or a guardrail, even when a refusal
+  annoyed the person. A refusal is often the session going right. Such proposals
+  are dropped in code before anyone reads them.
 `.trim();
+
+/** The live Never rules, read the same way buildSystemPrompt reads them. */
+function readSystemPrompt(): string {
+  return readFileSync(join(import.meta.dirname, "../system-prompt/SYSTEM_PROMPT.md"), "utf8");
+}
 
 export interface ReflectionResult {
   path: string;
@@ -108,7 +117,8 @@ export async function reflect(
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const sessionLog = renderSessionLog(conversation);
-  memory.writeSessionLog(`${stamp}-${conversation.key.replace(/[^a-zA-Z0-9._-]/g, "_")}`, sessionLog);
+  const logId = `${stamp}-${conversation.key.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+  const logPath = memory.writeSessionLog(logId, sessionLog);
 
   // A separate session with no tools. Reflection reads and writes text, nothing else.
   const agentDir = getAgentDir();
@@ -159,6 +169,12 @@ export async function reflect(
     session.dispose();
   }
 
+  // Filter before writing, so a proposal that argues against a guardrail never
+  // sits in the directory looking like advice. The full text goes to the session
+  // log instead, where the owner can still read it and overrule the filter.
+  const { kept, dropped } = dropGuardrailChanges(text.trim(), neverRules(readSystemPrompt()));
+  if (dropped.length > 0) memory.writeSessionLog(logId, `${sessionLog}\n${renderDropped(dropped)}`);
+
   mkdirSync(config.proposalsDir, { recursive: true });
   const body = [
     `# Reflection proposal`,
@@ -167,8 +183,16 @@ export async function reflect(
     `- Generated: ${new Date().toISOString()}`,
     `- Accept with: \`npm run reflect:accept ${stamp}\``,
     "",
-    text.trim() || "## nothing to change",
+    kept || "## nothing to change",
     "",
+    // Its own heading, so accept.ts never mistakes it for part of the section above.
+    ...(dropped.length > 0
+      ? [
+          "## dropped",
+          `${dropped.length} item(s) touched a guardrail and were removed. Full text in ${join(memory.dir, logPath)}.`,
+          "",
+        ]
+      : []),
   ].join("\n");
 
   const path = join(config.proposalsDir, `${stamp}.md`);
