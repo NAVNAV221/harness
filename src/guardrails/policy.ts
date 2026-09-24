@@ -21,6 +21,12 @@ export interface GuardrailPolicy {
 }
 
 export const policy: GuardrailPolicy = {
+  // Every rule below is a tool name plus a regex over that tool's input. The model
+  // reaches most things through bash, and bash can spell one action many ways, so
+  // for anything a credential can do, the defence is that this process does not
+  // hold that credential. A regex here is then the backstop. Say which one each
+  // rule is, next to it: a backstop mistaken for the defence is how the worst
+  // thing happens with every test passing. `npm run guardrail:demo` shows both.
   deny: [
     // Matched against JSON.stringify(input), so the command is always followed by
     // a quote - never whitespace or end-of-string. Anchoring on those made this

@@ -26,7 +26,7 @@ one module at a time.
 
 ## What this is not
 
-This is not a finished production service. The four-question setup creates an
+This is not a finished production service. The five-question setup creates an
 initial specification and personalized scaffold, not a complete harness for your
 team.
 
@@ -67,12 +67,17 @@ Start with:
 4. [`src/memory/index.ts`](src/memory/index.ts) - stored knowledge, search, and visible truncation.
 5. [`src/reflection/`](src/reflection/) - session lessons proposed for human review.
 
-The test suite currently has 67 tests covering guardrails, memory, configuration,
-and reflection.
+The test suite currently has 93 tests covering guardrails, memory, configuration,
+and reflection. To see the policy decide real tool calls without a model:
+
+```bash
+npm run guardrail:demo
+npm run guardrail:demo -- bash "git push origin main"
+```
 
 ### Design your own with Claude Code
 
-The plugin asks four initial questions, writes the first spec, and scaffolds a
+The plugin asks five initial questions, writes the first spec, and scaffolds a
 personalized copy into your working directory:
 
 ```text
@@ -85,8 +90,13 @@ The questions establish:
 
 1. The one job the harness should do.
 2. Who talks to it and where.
-3. The worst thing it could do by accident.
+3. The worst thing it could do by accident, and which credential could do it:
+   kept out of the agent's process, that credential is the real defence.
 4. The first three capabilities it needs.
+5. Where it runs, and whether its memory will hold private data.
+
+It then drafts the rest of the spec, marks what it inferred, and lets you either
+correct the draft once or have it interrogate you section by section.
 
 The result knows its purpose and boundaries, but it will explicitly mark missing
 capabilities as not built. Add one module at a time:
@@ -168,9 +178,11 @@ npm install
 npm start
 ```
 
-One quick way to see the harness boundary is to ask it to run a destructive shell
-command. The shipped policy pauses destructive and outward-facing commands for
-human approval instead of relying on the system prompt.
+To see the harness boundary, run `npm run guardrail:demo`. Asking the running
+harness to run a destructive command mostly shows the model refusing, because the
+system prompt stops it before any tool call is made. The demo sends tool calls
+straight through the policy, which pauses destructive and outward-facing commands
+for approval whether or not the model cooperates.
 
 ## Security before deployment
 

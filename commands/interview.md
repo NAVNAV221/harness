@@ -7,7 +7,7 @@ Interview me about the harness I want to build, and write the resulting specs
 into `spec/`.
 
 If `spec/harness.md` does not exist and no harness has been scaffolded here yet,
-say so first: `/harness:init` asks three questions and gets them a running harness,
+say so first: `/harness:init` asks five questions and gets them a running harness,
 where this command asks 55 and gets them specs. Recommend it, and only continue
 here if they say they want the full interview anyway.
 
