@@ -29,6 +29,12 @@ prompt, tools, memory, messaging, guardrails, skills and reflection.
 - **Comments explain the decision**, not the syntax. Every module header says
   what the module is for and what it deliberately does not do.
 - `npm run typecheck` must pass before any commit.
+- **Every user-visible change bumps the version** in `.claude-plugin/plugin.json`,
+  with `package.json` kept equal, and gets a line in `CHANGELOG.md`. Installs
+  update by version: an unbumped version means `/plugin update` reports nothing
+  and ships nothing, so a fix on master never reaches anyone who installed
+  before it. `marketplace.json` deliberately carries no version, so the two
+  cannot disagree. Patch for fixes, minor for new questions, commands or modules.
 
 ## What not to do
 
