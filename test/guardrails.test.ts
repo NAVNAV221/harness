@@ -8,7 +8,8 @@
  */
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { Gatekeeper, matchRule, policy, type Rule } from "../src/guardrails/index.ts";
+import { decide, Gatekeeper, matchRule, policy, type Rule } from "../src/guardrails/index.ts";
+import { render, SAMPLES } from "../src/guardrails/demo.ts";
 import type { Sender } from "../src/messaging/types.ts";
 
 const sender = (id = "u1"): Sender => ({ id, display: id });
@@ -101,6 +102,39 @@ describe("the shipped approval rules", () => {
 
   test("every memory write is held, with no pattern needed", () => {
     assert.ok(matchRule(policy.requireApproval, "memory_write", "{}"));
+  });
+});
+
+describe("decide", () => {
+  test("deny wins over approval when a call matches both", () => {
+    // rm -rf / also matches the approval rule's \brm\b. Asking a human would let
+    // a tired yes through something the policy says must never happen.
+    assert.equal(decide(policy, "bash", render({ command: "rm -rf /" })).action, "deny");
+  });
+
+  test("names the rule that held the call", () => {
+    assert.deepEqual(decide(policy, "bash", render({ command: "git push" })), {
+      action: "approval",
+      reason: "destructive or outward-facing shell command",
+    });
+  });
+
+  test("allows what no rule names, with no reason attached", () => {
+    assert.deepEqual(decide(policy, "read", render({ path: "README.md" })), { action: "allow" });
+  });
+});
+
+describe("npm run guardrail:demo", () => {
+  // The demo is how a new operator learns what the policy does. If it printed
+  // something the policy does not do, it would teach the wrong thing confidently.
+  for (const sample of SAMPLES) {
+    test(`${sample.tool} ${JSON.stringify(sample.input)} -> ${sample.expect}`, () => {
+      assert.equal(decide(policy, sample.tool, render(sample.input)).action, sample.expect);
+    });
+  }
+
+  test("renders input the way the extension does, so a secret is redacted before matching", () => {
+    assert.match(render({ command: `echo ghp_${"c".repeat(30)}` }), /\[redacted:github-token\]/);
   });
 });
 

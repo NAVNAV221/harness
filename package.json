@@ -9,6 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "reflect:accept": "tsx src/reflection/accept.ts",
+    "guardrail:demo": "tsx src/guardrails/demo.ts",
     "learn:loop": "tsx learn/loop.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },

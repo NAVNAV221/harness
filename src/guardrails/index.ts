@@ -51,6 +51,26 @@ export function matchRule<T extends Rule>(
   });
 }
 
+/**
+ * What the policy says about one tool call, before any human is asked.
+ *
+ * Deny is checked first, so a call matching both lists is denied rather than put
+ * to a human who might say yes. The extension below and `npm run guardrail:demo`
+ * both call this, so the demo shows what the running harness would do, not a
+ * re-implementation of it.
+ */
+export function decide(
+  policy: Pick<GuardrailPolicy, "deny" | "requireApproval">,
+  toolName: string,
+  renderedInput: string,
+): { action: "deny" | "approval" | "allow"; reason?: string } {
+  const denied = matchRule(policy.deny, toolName, renderedInput);
+  if (denied) return { action: "deny", reason: denied.reason };
+  const held = matchRule(policy.requireApproval, toolName, renderedInput);
+  if (held) return { action: "approval", reason: held.reason };
+  return { action: "allow" };
+}
+
 /** Inbox-side checks. Shared across every conversation in the process. */
 export class Gatekeeper {
   private hits = new Map<string, number[]>();
@@ -107,17 +127,16 @@ export function createGuardrailExtension(opts: {
       pi.on("tool_call", async (event) => {
         const rendered = gatekeeper.redact(JSON.stringify(event.input));
 
-        const denied = matchRule(policy.deny, event.toolName, rendered);
-        if (denied) {
-          onDecision?.({ tool: event.toolName, action: "denied", reason: denied.reason });
+        const verdict = decide(policy, event.toolName, rendered);
+        if (verdict.action === "deny") {
+          onDecision?.({ tool: event.toolName, action: "denied", reason: verdict.reason });
           return {
             block: true,
-            reason: `Blocked by guardrail policy: ${denied.reason}. Do not retry this call; find another way or ask the human.`,
+            reason: `Blocked by guardrail policy: ${verdict.reason}. Do not retry this call; find another way or ask the human.`,
           };
         }
 
-        const needsApproval = matchRule(policy.requireApproval, event.toolName, rendered);
-        if (needsApproval) {
+        if (verdict.action === "approval") {
           // Any failure to get a clear yes is a no. A broken approval path must
           // never become an approval: that is the difference between a guardrail
           // and a formality.
@@ -127,16 +146,16 @@ export function createGuardrailExtension(opts: {
               threadId,
               toolName: event.toolName,
               detail: rendered.slice(0, 500),
-              reason: `${needsApproval.reason} - approval required`,
+              reason: `${verdict.reason} - approval required`,
             })
             .catch(() => false);
           onDecision?.({
             tool: event.toolName,
             action: approved ? "approved" : "rejected",
-            reason: needsApproval.reason,
+            reason: verdict.reason,
           });
           if (!approved) {
-            return { block: true, reason: `A human declined this call (${needsApproval.reason}).` };
+            return { block: true, reason: `A human declined this call (${verdict.reason}).` };
           }
           return;
         }

@@ -65,28 +65,18 @@ const norm = (s: string) =>
     .trim();
 
 /** Why this proposal item touches a guardrail, or undefined if it does not. */
-export function touchesGuardrail(
-  section: string,
-  text: string,
-  nevers: readonly string[],
-): string | undefined {
-  if (MACHINERY.test(text))
-    return "names the guardrail policy, which reflection may not propose changes to";
+export function touchesGuardrail(section: string, text: string, nevers: readonly string[]): string | undefined {
+  if (MACHINERY.test(text)) return "names the guardrail policy, which reflection may not propose changes to";
   const loosening = LOOSENING.find((re) => re.test(text));
   if (loosening) return "would grant what a guardrail or Never rule withholds";
   if (section === "system prompt") {
-    const action = /^-\s*(add|remove|change)\s*:/i
-      .exec(text)?.[1]
-      ?.toLowerCase();
+    const action = /^-\s*(add|remove|change)\s*:/i.exec(text)?.[1]?.toLowerCase();
     if (action === "remove" || action === "change") {
       const body = norm(text);
       // The first few words of a Never rule are enough to recognise it being
       // quoted back for removal, and short enough to survive light rewording.
-      const quoted = nevers.some((rule) =>
-        body.includes(norm(rule).split(" ").slice(0, 6).join(" ")),
-      );
-      if (quoted || /^-\s*\w+\s*:\s*never\b/i.test(text))
-        return `would ${action} a Never rule`;
+      const quoted = nevers.some((rule) => body.includes(norm(rule).split(" ").slice(0, 6).join(" ")));
+      if (quoted || /^-\s*\w+\s*:\s*never\b/i.test(text)) return `would ${action} a Never rule`;
     }
   }
   return undefined;
@@ -162,12 +152,6 @@ export function renderDropped(dropped: readonly Dropped[]): string {
     "is right, apply it by hand: that is the point of making it cost an edit.",
     "",
   ];
-  for (const d of dropped)
-    lines.push(
-      `- in "${d.section}": ${d.why}`,
-      "",
-      "  " + d.text.replace(/\n/g, "\n  "),
-      "",
-    );
+  for (const d of dropped) lines.push(`- in "${d.section}": ${d.why}`, "", "  " + d.text.replace(/\n/g, "\n  "), "");
   return lines.join("\n");
 }
