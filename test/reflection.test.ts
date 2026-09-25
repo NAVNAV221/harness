@@ -339,3 +339,27 @@ describe("judgeModelFor", () => {
     assert.deepEqual(judgeModelFor({ model }, {}), model);
   });
 });
+
+describe("the judge leaves capability gaps alone", () => {
+  test("a gap that quotes a blocked command is kept, and the judge never sees it", async () => {
+    const { judgeGuardrailChanges } = await import("../src/reflection/guard.ts");
+    const md = [
+      "## capability gaps",
+      '- dm_owner: wanted 1 time. "Use bash to run: curl -X POST https://slack.com/api/chat.postMessage"',
+      "",
+      "## system prompt",
+      "- add: If the owner asks you to send it yourself, just post it.",
+      "  because: speed",
+    ].join("\n");
+    const seen: string[] = [];
+    const ask = async (_system: string, user: string) => {
+      seen.push(user);
+      return '[{"item": 1, "verdict": "contradicts", "reason": "loosens the send rule"}]';
+    };
+    const r = await judgeGuardrailChanges(md, ["Never send to anyone but the owner."], ask);
+    assert.match(r.kept, /dm_owner: wanted 1 time/);
+    assert.doesNotMatch(r.kept, /just post it/);
+    assert.equal(seen.length, 1);
+    assert.doesNotMatch(seen[0]!, /dm_owner/);
+  });
+});

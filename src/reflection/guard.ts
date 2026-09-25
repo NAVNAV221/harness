@@ -224,8 +224,13 @@ export async function judgeGuardrailChanges(
   rules: readonly string[],
   ask: AskModel,
 ): Promise<{ kept: string; dropped: Dropped[] }> {
+  // "capability gaps" only records which tools were asked for; it changes no
+  // rule and is never applied. Seen live: the judge dropped "dm tool wanted
+  // once" because it quoted the blocked command that prompted it, which cost
+  // the one section that says what to build next. The keyword pass still runs.
+  const judged = (section: string) => section !== "capability gaps";
   const items: string[] = [];
-  filterItems(markdown, (_section, text) => void items.push(text));
+  filterItems(markdown, (section, text) => void (judged(section) && items.push(text)));
   if (items.length === 0) return { kept: markdown, dropped: [] };
 
   let verdicts: (string | undefined)[];
@@ -236,7 +241,7 @@ export async function judgeGuardrailChanges(
     verdicts = Array<string>(items.length).fill(`judge unavailable (${detail.slice(0, 200)})`);
   }
   let i = 0;
-  return filterItems(markdown, () => verdicts[i++]);
+  return filterItems(markdown, (section) => (judged(section) ? verdicts[i++] : undefined));
 }
 
 /** The rule text the judge checks against: every Never rule, and every policy reason. */
