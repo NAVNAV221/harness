@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "A forkable harness skeleton. Five parts, a prompt for each, built on pi.",

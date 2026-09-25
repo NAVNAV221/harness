@@ -3,6 +3,47 @@
 Installs update by the version in `.claude-plugin/plugin.json`. A change that
 does not bump it never reaches anyone who installed before it.
 
+## 0.3.0
+
+Lessons from building a real harness on this skeleton: a Slack assistant with an
+event log, four ingested sources and a commitment extractor.
+
+**Code**
+- `MessagingAdapter.progress?` shows each tool call as it runs, fed by
+  harness.ts from pi's tool events, redacted and never awaited. The CLI prints
+  `· tool: summary ... ok`.
+- `MessagingAdapter.post?` and `Harness.initiate(header, prompt)` let the
+  harness start a conversation (a scheduled brief, a reminder). The turn runs as
+  the internal scheduler; only `initiate` passes `internal: true`.
+- Text from several assistant messages in one turn is joined with a blank line.
+- Reflection's judge no longer reviews `capability gaps`, which changes no rule.
+
+**New optional module**
+- `derive` (`/harness:interview derive`, `/harness:build-derive`): an ETL from
+  the event log to memory entities, each citing the events it came from, with
+  verbatim-quote verification, derived ids that survive rewording, a policy file
+  the owner's corrections teach, and one extractor at a time. No code in the
+  skeleton, like the event log.
+
+**Build prompts and interviews**
+- Messaging: strangers filtered in the adapter, redelivery deduped, one queue
+  per conversation, refuse to start with a credential that acts as the owner,
+  Markdown converted to the platform's markup, progress writes chained per
+  conversation, `post` with one fixed destination; the interview asks about
+  progress and post.
+- Event log: fixed key order, index catch-up by byte offset, cursors that move
+  only on a complete read, budgets, quota as a quiet stop, dead resources
+  remembered, token gateways, the self stream never mined, `OnCalendar` timers,
+  FTS5 by Node build; the interview asks whether a source is already indexed
+  somewhere to query live instead.
+- Skills and tools: a skill is optional reading, so a must-hold output contract
+  goes in the tool result, with ready-made citations.
+- Init: Not built yet refuses in one line and names a build command only when
+  asked; a direct statement from the owner is a source.
+- Deployment: `npm ci`, self-matching `pkill` patterns, a localhost proxy on the
+  machine identity instead of a key file, user-unit journals, locks for shared
+  state; the interview asks how the harness reaches the model without a key.
+
 ## 0.2.1
 
 - Reflection's guardrail filter gains a second pass. The keyword heuristic missed
