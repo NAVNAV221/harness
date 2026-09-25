@@ -43,6 +43,25 @@ Your job is to make them match the spec, not to start over.
 - The container runs as a non-root user.
 - `npm test` passes inside the image if the spec says tests gate the deploy.
 
+## Things a real deployment hit
+
+- **Deploy with `npm ci`, never `npm install`.** `npm install` on the server
+  rewrote `package-lock.json`, and the next `git pull` refused to merge.
+- **A `pkill -f` pattern must not match its own command line.** Over ssh, the
+  command that contains the pattern matches it, and the session kills itself.
+  Write the pattern as `"[s]rc/worker.ts"`, which matches the process and not the
+  string that names it.
+- **When a model provider's plugin demands a key file, consider a local proxy.**
+  If the machine already has a keyless identity (a cloud VM's attached service
+  account), a small proxy on `127.0.0.1` that signs requests with it and speaks
+  an API the harness already supports is safer than minting a long-lived key to
+  satisfy a plugin. Bind it to localhost only.
+- **User-unit logs may need privileges to read.** `journalctl --user` can show
+  nothing for a user without the journal group; `sudo journalctl
+  _SYSTEMD_USER_UNIT=<unit>` reads them. Say which in the runbook.
+- **Two scheduled jobs that write the same state need a lock**, or a timer run
+  and a manual backfill will race.
+
 ## Then tell me two things
 
 - What the model can reach from inside this container that it could not reach

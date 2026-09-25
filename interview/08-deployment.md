@@ -78,6 +78,14 @@ route that only proves the process started.
 Restart policy, log destination, whether anyone is paged. A harness that restarts
 in a loop while the model API is down burns tokens on every boot.
 
+
+**9. How does it reach the model without a long-lived key?**
+If it runs on a cloud VM, ask whether the machine's own identity can call the
+model (a service account on Vertex, an instance role on Bedrock) and whether
+the provider plugin accepts that identity. If the plugin insists on a key file,
+a localhost proxy that signs with the machine identity avoids minting one. A
+key file on a server is the credential most likely to outlive everyone's memory
+of it.
 ## Write the spec
 
 Write `spec/deployment.md`:
