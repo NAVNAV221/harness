@@ -1,6 +1,6 @@
 ---
 description: Interview me about my harness and write the specs the build prompts read
-argument-hint: "[module] (harness|system-prompt|tools|memory|messaging|guardrails|skills|reflection|deployment|eventlog)"
+argument-hint: "[module] (harness|system-prompt|tools|memory|messaging|guardrails|skills|reflection|deployment|eventlog|derive)"
 ---
 
 Interview me about the harness I want to build, and write the resulting specs
@@ -12,7 +12,7 @@ where this command asks 55 and gets them specs. Recommend it, and only continue
 here if they say they want the full interview anyway.
 
 Module requested: $ARGUMENTS (if empty, run all of them in order, and for the
-optional ones - deployment and eventlog - ask first whether this harness needs
+optional ones - deployment, eventlog and derive - ask first whether this harness needs
 them rather than running them by default).
 
 How to do this:
@@ -20,7 +20,7 @@ How to do this:
 1. Read `interview/README.md`, then the interview file for the module. The
    mapping is by number: `00-harness`, `01-system-prompt`, `02-tools`,
    `03-memory`, `04-messaging`, `05-guardrails`, `06-skills`, `07-reflection`,
-   `08-deployment`, `09-eventlog`.
+   `08-deployment`, `09-eventlog`, `10-derive`.
 2. Every interview except `00-harness` depends on `spec/harness.md`. If it does
    not exist yet, run `interview/00-harness.md` first and say that you are doing so.
 3. Read the module's source before asking anything. Do not ask me what the code

@@ -14,11 +14,12 @@ messaging, guardrails, skills, reflection - report:
 - **Wired**: is it reachable at runtime? A tool not registered in
   `src/tools/index.ts`, or an adapter not in `src/messaging/index.ts`, is not wired.
 
-Then the optional modules, deployment (`spec/deployment.md`, `deploy/`) and
-event log (`spec/eventlog.md`, `src/eventlog/`). For each, one line: not chosen,
+Then the optional modules, deployment (`spec/deployment.md`, `deploy/`), event
+log (`spec/eventlog.md`, `src/eventlog/`) and derive (`spec/derive.md`,
+`src/derive/`). For each, one line: not chosen,
 specified, or built. Not chosen is not a gap. It becomes one only when
 `spec/harness.md` implies the module - it names a VM or a container, or says
-memory is derived from sources, or asks to debug what the harness did - and
+memory is derived from sources (event log, and then derive), or asks to debug what the harness did - and
 then name the interview that starts it.
 
 Then, in order of what would improve this harness most:

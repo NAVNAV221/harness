@@ -108,8 +108,9 @@ capabilities as not built. Add one module at a time:
 ```
 
 Two modules are optional and ship as an interview and a build prompt only:
-deployment, for running unattended, and an event log, an append-only searchable
-record of what the harness did and read. `/harness:status` reports them as not
+deployment, for running unattended; an event log, an append-only searchable
+record of what the harness did and read; and derive, which turns that log into
+memory entities such as commitments, each citing the events it came from. `/harness:status` reports them as not
 chosen until your spec gives a reason for them.
 
 `/plugin update` may improve the interviews. It never modifies the scaffolded
