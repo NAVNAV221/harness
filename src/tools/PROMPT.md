@@ -21,6 +21,12 @@ Constraints:
 - Errors are returned as content, not thrown. A thrown error ends the turn; a
   returned one lets the model recover.
 
+A tool result is the one text the model is guaranteed to read. When a tool's
+output feeds something with a fixed shape (a brief, a report), return the shape's
+rules with the data, and hand back ready-made citations (a link with its label)
+rather than ids and URLs the model has to assemble: left to assemble them, it
+pasted raw ids.
+
 Then run the adversarial pass: for every pair of tools now registered, show me
 the question that would make the model pick the wrong one, and the description
 change that fixes it. Repeat until you cannot construct one. Show me the pairs

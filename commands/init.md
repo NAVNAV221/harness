@@ -210,13 +210,19 @@ Make it theirs before they ever run it. Seven edits:
    every capability from question 4 that has no tool behind it today, which on a
    fresh scaffold is all of them. Then this rule:
 
-   > When asked to do something in Not built yet, say that the tool for it does
-   > not exist yet and name the command that builds it. Do not improvise it with
-   > bash and do not describe it as something you can do.
+   > When asked to do something in Not built yet, say in one short line that
+   > you cannot do that yet. Do not improvise it with bash and do not describe it
+   > as something you can do. Name the command that builds it only when asked how
+   > to get it built.
 
    This is the difference between a harness that says "I review PRs" on day one
-   and a harness that says "I cannot review PRs yet - run `/harness:build-tools`."
-   The second one is true, and it tells them what to do next.
+   and one that says "I cannot review PRs yet." The second one is true. It names
+   `/harness:build-tools` only on request: in a chat, the person is a user
+   first, and a build command in every refusal reads as noise.
+
+   If the harness cites sources, add: what the owner says directly in the
+   conversation is a source in its own right ("you said, <date>"). Without it,
+   the model apologises for citing the owner.
 5. **`src/guardrails/policy.ts`** - add a `deny` or `requireApproval` entry for
    the question 3 answer. Prefer `deny` when a human could never legitimately
    authorise it, `requireApproval` when they could. If you cannot write a regex

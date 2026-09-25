@@ -24,6 +24,17 @@ Constraints:
 - Put helper scripts in `scripts/` and long reference material in `references/`
   inside the skill folder, so the model can open them only when it needs them.
 
+## A skill is optional reading
+
+pi loads a skill's body only when the model decides to open it. Anything that
+must hold every time - an output format, a count, "end with agree?" - does not
+belong only in a skill. Put it in the result of the tool the skill starts with,
+where it cannot be skipped. Seen live: a brief skill that asked for exactly three
+actions was never opened, and the model listed eight raw ids; the same rules
+returned by the brief's gather tool were followed on the next turn. Keep the
+skill for judgement (how to rank, what to leave out); keep the contract in the
+tool.
+
 Then run the adversarial pass across all skill descriptions, including the ones
 that already existed: what request would make the model open the wrong one? Show
 me the collisions and the fixes.
