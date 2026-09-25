@@ -43,6 +43,23 @@ export interface ApprovalRequest {
   reason: string;
 }
 
+/**
+ * One tool call, as the harness sees it happen. Sent so a human can watch a long
+ * turn work instead of staring at silence.
+ *
+ * `summary` has already been through the redact list, like every outbound text.
+ * `toolCallId` pairs a start with its end: two calls to the same tool can be in
+ * flight at once, so the tool name alone cannot.
+ */
+export interface ProgressEvent {
+  kind: "tool_start" | "tool_end";
+  toolCallId: string;
+  toolName: string;
+  summary: string;
+  /** Set on tool_end: false when the tool reported an error. */
+  ok?: boolean;
+}
+
 export interface AdapterHandlers {
   onMessage(message: IncomingMessage): Promise<void>;
   /** Called when the adapter shuts down cleanly, so the harness can reflect. */
@@ -64,5 +81,20 @@ export interface MessagingAdapter {
   requestApproval(request: ApprovalRequest): Promise<boolean>;
   /** Optional: stream partial assistant text. No-op is fine. */
   typing?(channel: string, threadId?: string): Promise<void>;
+  /**
+   * Optional: show a tool call starting or finishing, in the conversation it
+   * belongs to. Best effort by contract: the harness never waits on it, and an
+   * adapter must never let a failure here break the turn. The turn's final text
+   * still arrives through send().
+   */
+  progress?(channel: string, threadId: string | undefined, event: ProgressEvent): Promise<void>;
+  /**
+   * Optional: START a conversation, for a harness that speaks first (a
+   * scheduled brief, a reminder). Posts `text` as a new top-level message and
+   * returns where it landed, so the harness can reply in its thread. The only
+   * outbound path that is not a reply: an adapter must post it only where the
+   * harness is allowed to talk, never to an arbitrary channel.
+   */
+  post?(text: string): Promise<{ channel: string; threadId: string }>;
   stop(): Promise<void>;
 }

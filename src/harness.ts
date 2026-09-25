@@ -50,6 +50,21 @@ export interface Conversation {
   pendingDecisions?: Turn["decisions"];
 }
 
+/**
+ * One line a human can read for a tool call's arguments: the field that says
+ * what the call is about, when there is one, otherwise the arguments as JSON.
+ * Capped, because it is a progress row and not a log. A tool with no arguments
+ * gets nothing: "{}" on a progress row is noise.
+ */
+export function summarizeArgs(args: unknown, max = 200): string {
+  const a = (args ?? {}) as Record<string, unknown>;
+  const pick = a.command ?? a.path ?? a.file_path ?? a.pattern ?? a.query;
+  if (pick === undefined && Object.keys(a).length === 0) return "";
+  const text = typeof pick === "string" ? pick : JSON.stringify(args ?? {});
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
 export class Harness {
   private conversations = new Map<string, Conversation>();
   private gatekeeper = new Gatekeeper(policy);
@@ -65,9 +80,39 @@ export class Harness {
     return [...this.conversations.values()];
   }
 
-  async handleMessage(message: IncomingMessage): Promise<void> {
-    // Guardrail, inbox side. Before a single token is spent.
-    const admitted = this.gatekeeper.admit(message.sender, message.channel);
+  /**
+   * Start a conversation: post `header` as a new top-level message, then run a
+   * turn on `prompt` whose reply lands in that message's thread. For a harness
+   * that speaks first - a scheduled brief, a reminder.
+   *
+   * The sender is the internal "scheduler". It is not a platform user and
+   * cannot be claimed by one, because adapters take the sender id from the
+   * platform. This is the only caller of `internal: true`: keep it that way, or
+   * the inbox guardrail has a side door.
+   */
+  async initiate(header: string, prompt: string): Promise<{ channel: string; threadId: string }> {
+    if (!this.adapter.post) throw new Error(`the ${this.adapter.name} adapter cannot start a conversation`);
+    const where = await this.adapter.post(header);
+    await this.handleMessage(
+      {
+        channel: where.channel,
+        threadId: where.threadId,
+        sender: { id: "scheduler", display: "scheduler" },
+        text: prompt,
+        ts: new Date().toISOString(),
+      },
+      { internal: true },
+    );
+    return where;
+  }
+
+  async handleMessage(message: IncomingMessage, opts: { internal?: boolean } = {}): Promise<void> {
+    // Guardrail, inbox side. Before a single token is spent. An internal turn
+    // never came through the inbox, so there is nothing to admit; everything
+    // from a platform still goes through here.
+    const admitted = opts.internal
+      ? { ok: true as const, reason: undefined }
+      : this.gatekeeper.admit(message.sender, message.channel);
     if (!admitted.ok) {
       await this.adapter.send({
         channel: message.channel,
@@ -90,11 +135,28 @@ export class Harness {
 
     let assistantText = "";
     const unsubscribe = conversation.session.subscribe((event) => {
+      // Progress is fire-and-forget: the turn never waits on it and never fails
+      // because of it. The summary goes through the same redact list as a reply.
+      if (event.type === "tool_execution_start" || event.type === "tool_execution_end") {
+        const started = event.type === "tool_execution_start";
+        void this.adapter
+          .progress?.(message.channel, message.threadId, {
+            kind: started ? "tool_start" : "tool_end",
+            toolCallId: event.toolCallId,
+            toolName: event.toolName,
+            summary: started ? this.gatekeeper.redact(summarizeArgs(event.args)) : "",
+            ok: started ? undefined : !event.isError,
+          })
+          ?.catch(() => {});
+        return;
+      }
       if (event.type !== "message_end") return;
-      const message = event.message as { role?: string; content?: unknown };
-      if (message.role !== "assistant" || !Array.isArray(message.content)) return;
-      for (const part of message.content as { type: string; text?: string }[]) {
-        if (part.type === "text" && part.text) assistantText += part.text;
+      const ended = event.message as { role?: string; content?: unknown };
+      if (ended.role !== "assistant" || !Array.isArray(ended.content)) return;
+      for (const part of ended.content as { type: string; text?: string }[]) {
+        // One turn can end several assistant messages (text, tool call, more
+        // text). Keep them apart, or "...10:00).Saved:" runs two thoughts together.
+        if (part.type === "text" && part.text) assistantText += (assistantText ? "\n\n" : "") + part.text;
       }
     });
 

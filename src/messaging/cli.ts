@@ -6,7 +6,7 @@
  */
 import { createInterface, type Interface } from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import type { AdapterHandlers, ApprovalRequest, MessagingAdapter, OutgoingMessage } from "./types.ts";
+import type { AdapterHandlers, ApprovalRequest, MessagingAdapter, OutgoingMessage, ProgressEvent } from "./types.ts";
 
 export class CliAdapter implements MessagingAdapter {
   readonly name = "cli";
@@ -45,6 +45,19 @@ export class CliAdapter implements MessagingAdapter {
     // Indent continuation lines so a multi-line reply still reads as one turn.
     const body = message.text.split("\n").join("\n         ");
     stdout.write(`\nharness> ${body}\n`);
+  }
+
+  async post(text: string): Promise<{ channel: string; threadId: string }> {
+    stdout.write(`\nharness> ${text.split("\n").join("\n         ")}\n`);
+    return { channel: "cli", threadId: `cli-${Date.now()}` };
+  }
+
+  async progress(_channel: string, _threadId: string | undefined, event: ProgressEvent): Promise<void> {
+    if (event.kind === "tool_start") {
+      stdout.write(`\n  · ${event.toolName}${event.summary ? `: ${event.summary}` : ""}`);
+    } else {
+      stdout.write(event.ok === false ? "  ... failed\n" : "  ... ok\n");
+    }
   }
 
   async requestApproval(request: ApprovalRequest): Promise<boolean> {
