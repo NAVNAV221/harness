@@ -54,8 +54,9 @@ record nobody chose of data nobody agreed to keep.
   `memory_write` refuse an entity of those types without one.
 - **Check FTS5 before you depend on it.** `node:sqlite` is built into recent Node,
   but not every build includes the FTS5 module: Node 23.10 fails with
-  `no such module: fts5`. Run `CREATE VIRTUAL TABLE t USING fts5(x)` on the Node
-  you deploy on. If it fails, use `better-sqlite3`, which bundles FTS5, and say in
+  `no such module: fts5`, while 22.13+ and 25 have it. Run
+  `CREATE VIRTUAL TABLE t USING fts5(x)` on the Node you deploy on, not the one
+  on your laptop: they are often different builds. If it fails, use `better-sqlite3`, which bundles FTS5, and say in
   the commit that adds it that it replaces `node:sqlite`, and why.
 - **Search stays FTS5 unless the data says otherwise.** A heavier engine
   (Tantivy, a vector store) is added only after a spike on their real log shows
@@ -63,6 +64,43 @@ record nobody chose of data nobody agreed to keep.
   into the spec either way. Note that the porter stemmer is English-only.
 - **Retention is one job, and it is the only thing that deletes.** Build it only
   if the spec names a window.
+
+## Things a real ingest hit
+
+Found by building this against Slack, Jira, Google Calendar and Gmail. Each one
+either lost data silently or failed every five minutes until fixed.
+
+- **Serialize with a fixed key order.** `JSON.stringify` follows insertion
+  order; a mapper that builds the object differently changes the bytes without
+  changing the event, and the byte-identical test fails for the wrong reason.
+- **Catch the index up from the JSONL before every search**, by per-file byte
+  offset. Two processes write the log (the agent's `self` stream, ingest's
+  `ingested` stream); an index updated only by the writer that owns it is stale
+  for the other. Never index half a line.
+- **A cursor advances only on a complete read.** History APIs usually page
+  newest-first: take the first page and move the cursor to its newest item, and
+  everything between the pages is skipped forever. Read down to the cursor, or
+  do not move it; ids make the re-read free.
+- **Budget every run.** A five-minute timer and a first backfill of hundreds of
+  conversations do not fit in one run; spread it, per source, under the
+  platform's rate limit.
+- **Quota is not failure.** A rate-limit or quota error stops that source for
+  this run without moving its cursor, quietly. Anything else is reported.
+- **Remember dead resources.** A conversation the API says no longer exists
+  (`channel_not_found`) is recorded in the cursor and skipped, or it errors on
+  every run for ever.
+- **Scoped API tokens may need a gateway.** Atlassian's scoped tokens return 401
+  on the site URL and work only through `api.atlassian.com/ex/jira/<cloudId>`.
+  When a token that should work does not, check the platform's gateway before
+  the token.
+- **Never let an extractor read the harness's own replies.** If anything mines
+  the log (see the `derive` module), the `self` stream's outbound messages and
+  tool events are not candidates: a pipeline that reads its own output feeds on
+  itself.
+- **One process and one unit per credential set.** Ingest loads only its env
+  file; the agent never does. A systemd timer uses `OnCalendar=`: an
+  `OnUnitInactiveSec=` timer counts only from runs it started itself, so enabled
+  after a manual run it never fires.
 
 Add the log directory to `.env.example` as `HARNESS_LOG_DIR`, defaulting next to
 memory, and to `.gitignore` if it could ever land inside the repo.

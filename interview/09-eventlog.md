@@ -56,6 +56,13 @@ so its credentials can often do more than read, and the agent should never be on
 `env` call away from them. If `spec/harness.md` has a `Credentials` section, read
 it and confirm rather than ask again.
 
+Before logging a source, ask whether another system the owner already has
+indexes it (a company search product, a session analyzer). Team-wide data that
+is already indexed elsewhere is better queried live and cited by link than
+copied: a second copy is a second place for it to leak and a second thing to
+keep fresh. The log is for what only this harness sees: the owner's own
+traffic, and its own actions.
+
 **3. What is in scope?**
 Everything the harness can see is almost never the answer. Ask for the rule:
 "everything I send and everything addressed to me", "these three channels",

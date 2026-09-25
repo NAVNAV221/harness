@@ -53,6 +53,13 @@ environment variable, secret manager, file. Never a committed file.
 Secrets, full stack traces, memory contents, file paths, anything from a private
 channel repeated into a public one. This becomes redaction, enforced in code.
 
+**10. Should it show its work while a turn runs, and can it speak first?**
+Two optional parts of the interface. `progress` shows each tool call as it
+happens; worth it on any platform where a turn can take a minute. `post` lets
+the harness open a conversation itself - a scheduled brief, a reminder - and
+must say where it may post. Get a yes or no for each, and for `post`, the one
+destination.
+
 ## Non-negotiables for the implementation
 
 Whoever builds this adapter must follow these, and the spec must repeat them:
@@ -98,6 +105,10 @@ Write `spec/messaging.md`:
 
 ## Credentials
 <which secrets, which env vars, where they come from>
+
+## Progress and first contact
+- progress: <yes | no, and how the platform shows it>
+- post: <no | yes, and the one destination>
 
 ## Never send outward
 - <rule>
