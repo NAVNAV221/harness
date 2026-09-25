@@ -9,19 +9,19 @@
  *
  * So anything that would loosen a Never rule or touch guardrail behaviour is
  * dropped before the proposal is written, and logged where the owner can read it.
- * accept.ts runs the same check again, for proposals written before this existed
- * or edited by hand.
+ * accept.ts runs the heuristic again, for proposals written before this existed
+ * or edited by hand; it makes no model call.
  *
- * This is a heuristic over the model's structured output, and it will miss a
- * clever paraphrase. That is acceptable because it is not the only layer: prompt,
- * tool and skill proposals are never applied automatically, and policy.ts is not
- * something reflection can write. What this removes is the easy route, the one a
- * tired reviewer would wave through.
+ * Two passes. A keyword heuristic runs first and costs nothing; it catches the
+ * phrasing seen so far and misses paraphrases. A cheap model then judges every
+ * item that survived, against the actual rule text, and fails closed. Neither is
+ * the only layer: prompt, tool and skill proposals are never applied
+ * automatically, and policy.ts is not something reflection can write.
  *
- * It deliberately over-drops. A proposal that tightens a Never rule by rewording
- * it is dropped too, because telling a tightening from a loosening needs judgement
- * this cannot have. The dropped text is kept, so nothing is lost; it just has to
- * be applied by a human who read it.
+ * Both over-drop on purpose. The heuristic drops a proposal that tightens a Never
+ * rule by rewording it, because it cannot tell tightening from loosening, and the
+ * judge drops everything when it is unavailable. The dropped text is kept, so
+ * nothing is lost; it just has to be applied by a human who read it.
  */
 
 export interface Dropped {
@@ -83,15 +83,17 @@ export function touchesGuardrail(section: string, text: string, nevers: readonly
 }
 
 /**
- * Remove every item that touches a guardrail from a reflection proposal.
+ * Walk a reflection proposal item by item, dropping the ones `why` has a reason for.
  *
  * An item is one `- ` bullet with its indented continuation lines, or one fenced
  * block. Headings left with nothing under them are removed too, so the proposal
  * never shows an empty "## system prompt" that reads as if something were there.
+ * Both filters walk the same items in the same order, which is what lets the
+ * judge's verdicts be matched back by position.
  */
-export function dropGuardrailChanges(
+export function filterItems(
   markdown: string,
-  nevers: readonly string[],
+  why: (section: string, text: string) => string | undefined,
 ): { kept: string; dropped: Dropped[] } {
   const lines = markdown.split("\n");
   const out: string[] = [];
@@ -121,8 +123,8 @@ export function dropGuardrailChanges(
     }
 
     const item = lines.slice(i, end).join("\n");
-    const why = touchesGuardrail(section, item, nevers);
-    if (why) dropped.push({ section, text: item, why });
+    const reason = why(section, item);
+    if (reason) dropped.push({ section, text: item, why: reason });
     else out.push(...lines.slice(i, end));
     i = end;
   }
@@ -140,6 +142,129 @@ export function dropGuardrailChanges(
       .trim(),
     dropped,
   };
+}
+
+/** The free first pass: keywords and Never-rule quotes, no model. accept.ts uses only this. */
+export function dropGuardrailChanges(
+  markdown: string,
+  nevers: readonly string[],
+): { kept: string; dropped: Dropped[] } {
+  return filterItems(markdown, (section, text) => touchesGuardrail(section, text, nevers));
+}
+
+// --- the judge ----------------------------------------------------------------
+//
+// The heuristic only catches phrasing it has seen. "If the owner asks you to send
+// it yourself, just post it to the client channel" contradicts a Never rule
+// against messaging anyone but the owner, and contains no word the heuristic
+// knows. Recognising a paraphrase needs a model, so a cheap one reads every item
+// that survived the first pass, in one call, against the actual rule text.
+//
+// It fails closed. An error, a reply that does not parse, or an item it gave no
+// verdict for is a drop with "judge unavailable". A broken judge that waved
+// items through would be the same hole with a model's name on it.
+
+/** Anything that sends a system prompt and a message to a model and returns its text. */
+export type AskModel = (system: string, user: string) => Promise<string>;
+
+export const JUDGE_RULES = `
+You check proposed changes to an AI harness against its safety rules. You do not
+improve the changes, and you do not judge whether they are useful.
+
+For each numbered item, answer one question: would applying it contradict,
+loosen, or create an exception to any of the rules listed? An exception counts
+even when it is narrow or polite, such as "only when the user explicitly asks".
+Adding a new, stricter rule is fine. Anything unrelated to the rules is fine.
+
+Reply with a JSON array and nothing else, one object per item, in order:
+[{"item": 1, "verdict": "contradicts" | "fine", "reason": "<one line, naming the rule>"}]
+`.trim();
+
+export function buildJudgeRequest(items: readonly string[], rules: readonly string[]): string {
+  return [
+    "## Rules",
+    ...rules.map((rule) => `- ${rule}`),
+    "",
+    "## Proposed items",
+    ...items.map((item, i) => `${i + 1}. ${item.replace(/\n/g, "\n   ")}`),
+  ].join("\n");
+}
+
+/**
+ * The judge's verdict per item: a reason string to drop it, or undefined to keep it.
+ * Anything this cannot read with certainty becomes a drop.
+ */
+export function parseJudgeReply(reply: string, count: number): (string | undefined)[] {
+  const unavailable = (detail: string) => Array<string>(count).fill(`judge unavailable (${detail})`);
+  const json = /\[[\s\S]*\]/.exec(reply)?.[0];
+  if (!json) return unavailable("no JSON array in the reply");
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return unavailable("reply was not valid JSON");
+  }
+  if (!Array.isArray(parsed)) return unavailable("reply was not an array");
+
+  const verdicts: (string | undefined)[] = Array<string>(count).fill("judge unavailable (no verdict for this item)");
+  for (const entry of parsed as { item?: unknown; verdict?: unknown; reason?: unknown }[]) {
+    const n = typeof entry?.item === "number" ? entry.item - 1 : -1;
+    if (n < 0 || n >= count) continue;
+    const reason = typeof entry.reason === "string" && entry.reason.trim() ? entry.reason.trim() : "no reason given";
+    if (entry.verdict === "fine") verdicts[n] = undefined;
+    else if (entry.verdict === "contradicts") verdicts[n] = `judge: ${reason}`;
+    else verdicts[n] = `judge unavailable (unknown verdict for this item)`;
+  }
+  return verdicts;
+}
+
+/** The second pass: one model call for every item the heuristic kept. */
+export async function judgeGuardrailChanges(
+  markdown: string,
+  rules: readonly string[],
+  ask: AskModel,
+): Promise<{ kept: string; dropped: Dropped[] }> {
+  const items: string[] = [];
+  filterItems(markdown, (_section, text) => void items.push(text));
+  if (items.length === 0) return { kept: markdown, dropped: [] };
+
+  let verdicts: (string | undefined)[];
+  try {
+    verdicts = parseJudgeReply(await ask(JUDGE_RULES, buildJudgeRequest(items, rules)), items.length);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    verdicts = Array<string>(items.length).fill(`judge unavailable (${detail.slice(0, 200)})`);
+  }
+  let i = 0;
+  return filterItems(markdown, () => verdicts[i++]);
+}
+
+/** The rule text the judge checks against: every Never rule, and every policy reason. */
+export function guardrailRules(
+  nevers: readonly string[],
+  policy: {
+    deny: readonly { tool: string; reason: string }[];
+    requireApproval: readonly { tool: string; reason: string }[];
+  },
+): string[] {
+  return [
+    ...nevers,
+    ...policy.deny.map((r) => `The ${r.tool} tool is denied for: ${r.reason}.`),
+    ...policy.requireApproval.map((r) => `The ${r.tool} tool needs human approval for: ${r.reason}.`),
+    "The guardrail policy (src/guardrails/policy.ts) is changed only by a human, never by reflection.",
+  ];
+}
+
+/** Both passes, in order: the free heuristic, then the judge on whatever survived it. */
+export async function filterProposal(
+  markdown: string,
+  nevers: readonly string[],
+  rules: readonly string[],
+  ask: AskModel,
+): Promise<{ kept: string; dropped: Dropped[] }> {
+  const first = dropGuardrailChanges(markdown, nevers);
+  const second = await judgeGuardrailChanges(first.kept, rules, ask);
+  return { kept: second.kept, dropped: [...first.dropped, ...second.dropped] };
 }
 
 /** The session-log half: what was dropped, in full, so the owner can overrule it. */

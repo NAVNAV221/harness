@@ -3,6 +3,17 @@
 Installs update by the version in `.claude-plugin/plugin.json`. A change that
 does not bump it never reaches anyone who installed before it.
 
+## 0.2.1
+
+- Reflection's guardrail filter gains a second pass. The keyword heuristic missed
+  paraphrased contradictions, such as "if the owner asks you to send it
+  yourself, just post it to the client channel" against a rule to message no one
+  but the owner. A cheap model (`HARNESS_JUDGE_MODEL`, Haiku by default) now
+  judges every item the heuristic kept, in one call, against the actual Never
+  rules and policy reasons. It fails closed: an error or an unreadable reply
+  drops every item as "judge unavailable". `reflect:accept` stays heuristic-only
+  and makes no model call.
+
 ## 0.2.0
 
 Everything on master since 0.1.0, which is what `/plugin update` never

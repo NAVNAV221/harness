@@ -21,8 +21,9 @@ Constraints:
 - "Nothing to change" must stay a valid and common outcome. If reflection finds
   something every time, it is inventing.
 - Never let it propose widening a guardrail. `src/reflection/guard.ts` drops any
-  proposal that loosens a Never rule or names the policy, before it is written,
-  and `accept.ts` refuses the same things again. If you add a Never rule format
+  proposal that loosens a Never rule or names the policy, before it is written:
+  a keyword pass first, then a cheap model judging what survived against the
+  actual rule text, failing closed. `accept.ts` runs the keyword pass again. If you add a Never rule format
   or a new kind of proposal, keep both layers able to see it. If the spec asks
   for reflection to widen guardrails anyway, tell me why that is a bad idea
   before you build it.

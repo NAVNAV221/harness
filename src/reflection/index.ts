@@ -16,13 +16,15 @@ import {
   DefaultResourceLoader,
   getAgentDir,
   ModelRuntime,
+  resolveCliModel,
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import type { HarnessConfig } from "../config.ts";
 import type { Conversation } from "../harness.ts";
 import type { Memory } from "../memory/index.ts";
-import { dropGuardrailChanges, neverRules, renderDropped } from "./guard.ts";
+import { policy } from "../guardrails/policy.ts";
+import { filterProposal, guardrailRules, neverRules, renderDropped } from "./guard.ts";
 
 const REFLECTION_RULES = `
 You are reviewing a finished session of an AI harness, to propose improvements.
@@ -80,6 +82,83 @@ function readSystemPrompt(): string {
   return readFileSync(join(import.meta.dirname, "../system-prompt/SYSTEM_PROMPT.md"), "utf8");
 }
 
+/**
+ * The judge's model. A small, fast one is enough to recognise a contradiction,
+ * and it runs on every reflection. HARNESS_JUDGE_MODEL overrides it. With a
+ * non-Anthropic HARNESS_MODEL and no override, the judge uses HARNESS_MODEL
+ * itself: slower and dearer, but a provider the operator has credentials for.
+ */
+export function judgeModelFor(
+  config: Pick<HarnessConfig, "model">,
+  env: NodeJS.ProcessEnv = process.env,
+): { provider: string; id: string } {
+  const raw = env.HARNESS_JUDGE_MODEL?.trim();
+  if (raw) {
+    const idx = raw.indexOf(":");
+    if (idx === -1) throw new Error(`HARNESS_JUDGE_MODEL must be "provider:model-id", got "${raw}"`);
+    return { provider: raw.slice(0, idx), id: raw.slice(idx + 1) };
+  }
+  if (config.model && config.model.provider !== "anthropic") return config.model;
+  return { provider: "anthropic", id: "claude-haiku-4-5" };
+}
+
+/**
+ * One prompt to a model in a separate session with no tools. Reflection and the
+ * judge read and write text, nothing else. With no model named, pi picks, which
+ * is what reflection has always done.
+ */
+async function askModel(
+  config: HarnessConfig,
+  system: string,
+  user: string,
+  model?: { provider: string; id: string },
+): Promise<string> {
+  const agentDir = getAgentDir();
+  const loader = new DefaultResourceLoader({
+    cwd: config.root,
+    agentDir,
+    systemPrompt: system,
+    noContextFiles: true,
+    noSkills: true,
+    noExtensions: true,
+  });
+  await loader.reload();
+
+  const modelRuntime = await ModelRuntime.create();
+  const resolved = model
+    ? resolveCliModel({ cliProvider: model.provider, cliModel: model.id, modelRuntime })
+    : undefined;
+  if (resolved?.error) throw new Error(`${model!.provider}:${model!.id}: ${resolved.error}`);
+
+  const { session } = await createAgentSession({
+    cwd: config.root,
+    agentDir,
+    modelRuntime,
+    model: resolved?.model,
+    resourceLoader: loader,
+    settingsManager: SettingsManager.create(config.root, agentDir),
+    sessionManager: SessionManager.inMemory(),
+    noTools: "all",
+  });
+
+  let text = "";
+  const unsubscribe = session.subscribe((event) => {
+    if (event.type !== "message_end") return;
+    const message = event.message as { role?: string; content?: unknown };
+    if (message.role !== "assistant" || !Array.isArray(message.content)) return;
+    for (const part of message.content as { type: string; text?: string }[]) {
+      if (part.type === "text" && part.text) text += part.text;
+    }
+  });
+  try {
+    await session.prompt(user);
+  } finally {
+    unsubscribe();
+    session.dispose();
+  }
+  return text;
+}
+
 export interface ReflectionResult {
   path: string;
   body: string;
@@ -120,59 +199,29 @@ export async function reflect(
   const logId = `${stamp}-${conversation.key.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   const logPath = memory.writeSessionLog(logId, sessionLog);
 
-  // A separate session with no tools. Reflection reads and writes text, nothing else.
-  const agentDir = getAgentDir();
-  const loader = new DefaultResourceLoader({
-    cwd: config.root,
-    agentDir,
-    systemPrompt: REFLECTION_RULES,
-    noContextFiles: true,
-    noSkills: true,
-    noExtensions: true,
-  });
-  await loader.reload();
-
-  const { session } = await createAgentSession({
-    cwd: config.root,
-    agentDir,
-    modelRuntime: await ModelRuntime.create(),
-    resourceLoader: loader,
-    settingsManager: SettingsManager.create(config.root, agentDir),
-    sessionManager: SessionManager.inMemory(),
-    noTools: "all",
-  });
-
-  let text = "";
-  const unsubscribe = session.subscribe((event) => {
-    if (event.type !== "message_end") return;
-    const message = event.message as { role?: string; content?: unknown };
-    if (message.role !== "assistant" || !Array.isArray(message.content)) return;
-    for (const part of message.content as { type: string; text?: string }[]) {
-      if (part.type === "text" && part.text) text += part.text;
-    }
-  });
-
-  try {
-    await session.prompt(
-      [
-        "Here is the session, and the memory index as it stood at the end.",
-        "",
-        "## Session",
-        sessionLog,
-        "",
-        "## Memory index",
-        memory.renderIndex(),
-      ].join("\n"),
-    );
-  } finally {
-    unsubscribe();
-    session.dispose();
-  }
+  const text = await askModel(
+    config,
+    REFLECTION_RULES,
+    [
+      "Here is the session, and the memory index as it stood at the end.",
+      "",
+      "## Session",
+      sessionLog,
+      "",
+      "## Memory index",
+      memory.renderIndex(),
+    ].join("\n"),
+  );
 
   // Filter before writing, so a proposal that argues against a guardrail never
   // sits in the directory looking like advice. The full text goes to the session
   // log instead, where the owner can still read it and overrule the filter.
-  const { kept, dropped } = dropGuardrailChanges(text.trim(), neverRules(readSystemPrompt()));
+  const nevers = neverRules(readSystemPrompt());
+  // judgeModelFor runs inside the judge, so a malformed HARNESS_JUDGE_MODEL fails
+  // closed like any other judge error instead of losing the whole proposal.
+  const { kept, dropped } = await filterProposal(text.trim(), nevers, guardrailRules(nevers, policy), (system, user) =>
+    askModel(config, system, user, judgeModelFor(config)),
+  );
   if (dropped.length > 0) memory.writeSessionLog(logId, `${sessionLog}\n${renderDropped(dropped)}`);
 
   mkdirSync(config.proposalsDir, { recursive: true });

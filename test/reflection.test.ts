@@ -12,8 +12,18 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseMemoryBlocks, section } from "../src/reflection/accept.ts";
-import { dropGuardrailChanges, neverRules, renderDropped } from "../src/reflection/guard.ts";
-import { renderSessionLog } from "../src/reflection/index.ts";
+import {
+  dropGuardrailChanges,
+  filterProposal,
+  guardrailRules,
+  JUDGE_RULES,
+  neverRules,
+  parseJudgeReply,
+  renderDropped,
+  type AskModel,
+} from "../src/reflection/guard.ts";
+import { judgeModelFor, renderSessionLog } from "../src/reflection/index.ts";
+import { policy } from "../src/guardrails/policy.ts";
 import type { Conversation } from "../src/harness.ts";
 
 const PROPOSAL = `# Reflection proposal
@@ -217,5 +227,115 @@ describe("dropGuardrailChanges", () => {
     assert.match(log, /## Dropped from the reflection proposal/);
     assert.match(log, /run it verbatim/);
     assert.match(log, /may be executed/);
+  });
+});
+
+describe("the judge", () => {
+  // A paraphrased contradiction, found by review of the heuristic: no trigger
+  // word, no quote of the rule, and it creates exactly the exception the rule forbids.
+  const PROMPT = "## Never\n\n- Never send, post or email anything to anyone but the owner. Draft it for the owner instead.\n";
+  const nevers = neverRules(PROMPT);
+  const rules = guardrailRules(nevers, policy);
+  const PARAPHRASE =
+    "## system prompt\n- add: If the owner asks you to send it yourself, just post it to the client channel.\n  because: turn 4.";
+  const FINE = "## system prompt\n- add: Name the owner before acting.\n  because: turn 3.";
+
+  const replying =
+    (verdicts: { item: number; verdict: string; reason?: string }[]): AskModel =>
+    async () =>
+      JSON.stringify(verdicts);
+
+  test("the heuristic alone keeps the paraphrase, which is why the judge exists", () => {
+    assert.equal(dropGuardrailChanges(PARAPHRASE, nevers).dropped.length, 0);
+  });
+
+  test("drops the paraphrase when the judge says it contradicts, with the judge's reason", async () => {
+    const ask = replying([{ item: 1, verdict: "contradicts", reason: "exception to the send-only-to-owner rule" }]);
+    const { kept, dropped } = await filterProposal(PARAPHRASE, nevers, rules, ask);
+    assert.equal(kept, "");
+    assert.equal(dropped.length, 1);
+    assert.equal(dropped[0]!.why, "judge: exception to the send-only-to-owner rule");
+    assert.match(renderDropped(dropped), /just post it to the client channel/);
+  });
+
+  test("keeps an item the judge says is fine", async () => {
+    const { kept, dropped } = await filterProposal(FINE, nevers, rules, replying([{ item: 1, verdict: "fine" }]));
+    assert.deepEqual(dropped, []);
+    assert.equal(kept, FINE);
+  });
+
+  test("a judge that throws drops everything, as judge unavailable", async () => {
+    const ask: AskModel = async () => {
+      throw new Error("401 no credentials");
+    };
+    const { kept, dropped } = await filterProposal(FINE, nevers, rules, ask);
+    assert.equal(kept, "");
+    assert.match(dropped[0]!.why, /^judge unavailable \(401 no credentials\)/);
+  });
+
+  test("an unparseable reply drops everything", async () => {
+    const { dropped } = await filterProposal(FINE, nevers, rules, async () => "Looks fine to me!");
+    assert.match(dropped[0]!.why, /^judge unavailable/);
+  });
+
+  test("an item the judge skipped, or gave an unknown verdict, is dropped", () => {
+    assert.deepEqual(
+      parseJudgeReply('[{"item": 1, "verdict": "fine"}, {"item": 3, "verdict": "probably ok"}]', 3).map(Boolean),
+      [false, true, true],
+    );
+  });
+
+  test("one call for every item, carrying the actual rule text", async () => {
+    let calls = 0;
+    let request = "";
+    const ask: AskModel = async (system, user) => {
+      calls++;
+      request = user;
+      assert.equal(system, JUDGE_RULES);
+      return JSON.stringify([
+        { item: 1, verdict: "fine" },
+        { item: 2, verdict: "contradicts", reason: "x" },
+      ]);
+    };
+    const { kept, dropped } = await filterProposal(`${FINE}\n\n${PARAPHRASE}`, nevers, rules, ask);
+    assert.equal(calls, 1);
+    assert.match(request, /Never send, post or email anything to anyone but the owner/);
+    assert.match(request, /The bash tool is denied for: recursive delete of \//);
+    assert.match(kept, /Name the owner/);
+    assert.equal(dropped.length, 1);
+  });
+
+  test("the heuristic runs first, so the judge never sees what it already dropped", async () => {
+    let seen = "";
+    const ask: AskModel = async (_s, user) => {
+      seen = user;
+      return JSON.stringify([{ item: 1, verdict: "fine" }]);
+    };
+    const md = `${FINE}\n- remove: Never send, post or email anything to anyone but the owner.`;
+    const { dropped } = await filterProposal(md, nevers, rules, ask);
+    assert.equal(dropped.length, 1);
+    assert.doesNotMatch(seen, /remove: Never send/);
+  });
+
+  test("nothing to judge means no model call", async () => {
+    const ask: AskModel = async () => assert.fail("the judge should not be called");
+    const { kept } = await filterProposal("## nothing to change", nevers, rules, ask);
+    assert.equal(kept, "## nothing to change");
+  });
+});
+
+describe("judgeModelFor", () => {
+  test("defaults to Haiku", () => {
+    assert.deepEqual(judgeModelFor({ model: undefined }, {}), { provider: "anthropic", id: "claude-haiku-4-5" });
+  });
+
+  test("HARNESS_JUDGE_MODEL wins", () => {
+    const env = { HARNESS_JUDGE_MODEL: "openai:gpt-5-mini" };
+    assert.deepEqual(judgeModelFor({ model: undefined }, env), { provider: "openai", id: "gpt-5-mini" });
+  });
+
+  test("on another provider with no override, reuses the harness model rather than a key it may not have", () => {
+    const model = { provider: "openai", id: "gpt-5" };
+    assert.deepEqual(judgeModelFor({ model }, {}), model);
   });
 });

@@ -31,7 +31,8 @@ Widening a guardrail is the obvious one. Ask for two more.
 
 **4. When does it run?**
 End of every session, on a schedule, only when asked. End of session is the
-default here, and it costs a model call per session - make sure they know.
+default here, and it costs a model call per session, plus one small call to the
+judge that checks proposals against the guardrails - make sure they know.
 
 **5. Who reads the proposals, and when?**
 A proposal nobody reads is a file that grows. If there is no answer to this
