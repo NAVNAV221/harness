@@ -9,7 +9,18 @@ export interface GuardrailPolicy {
   /** Tool calls matching these never run. The model is told why. */
   deny: { tool: string; match?: RegExp; reason: string }[];
   /** Tool calls matching these run only after a human says yes, in the channel. */
-  requireApproval: { tool: string; match?: RegExp; reason: string }[];
+  requireApproval: {
+    tool: string;
+    match?: RegExp;
+    reason: string;
+    /**
+     * Optional: what the approver reads, rendered from the tool's real input.
+     * Without it they get the input as JSON, which nobody reads carefully. Write
+     * it from the fields, never from text the model wrote for the purpose, so
+     * the person approves what will actually happen.
+     */
+    describe?: (input: unknown) => string;
+  }[];
   /** Applied to every outbound message and every tool result before the model sees it. */
   redact: { pattern: RegExp; replacement: string }[];
   /** Who may talk to the harness. "*" allows everyone. Ids are platform sender ids. */
@@ -39,7 +50,14 @@ export const policy: GuardrailPolicy = {
 
   requireApproval: [
     { tool: "bash", match: /\brm\b|\bmv\b|\bgit\s+push\b|\bkubectl\b|\bterraform\b/, reason: "destructive or outward-facing shell command" },
-    { tool: "memory_write", reason: "writing to long-term memory" },
+    {
+      tool: "memory_write",
+      reason: "writing to long-term memory",
+      describe: (input) => {
+        const { path, reason, content } = (input ?? {}) as Record<string, unknown>;
+        return `Remember in ${String(path)}: ${String(reason)}\n\n${String(content ?? "").slice(0, 600)}`;
+      },
+    },
   ],
 
   // Order matters: first match wins per pattern, all patterns are applied.

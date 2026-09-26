@@ -61,7 +61,11 @@ export function loadConfig(root = process.cwd()): HarnessConfig {
     // and a reflection proposal nobody can read after a restart is a proposal
     // that never existed. Point this at the same volume as memory.
     proposalsDir: resolve(root, process.env.HARNESS_PROPOSALS_DIR ?? "./reflection/proposals"),
-    // "bash" is here on purpose: it is what the guardrail demo blocks.
+    // "bash" is here while the harness has no tools of its own: it is how a
+    // fresh fork gets anything done, and what the guardrail demo blocks. Take it
+    // out once every job has a dedicated tool. Left in, the model reaches for
+    // the shell instead of them (seen live: grep over the data dir, `find /`
+    // over the disk). Keep the bash deny rules in policy.ts as a backstop.
     // Trim this list to the smallest set your harness actually needs.
     tools: ["read", "grep", "bash", "memory_search", "memory_read", "memory_write"],
   };

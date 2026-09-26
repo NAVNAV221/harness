@@ -63,11 +63,14 @@ export function decide(
   policy: Pick<GuardrailPolicy, "deny" | "requireApproval">,
   toolName: string,
   renderedInput: string,
-): { action: "deny" | "approval" | "allow"; reason?: string } {
+): { action: "deny" | "approval" | "allow"; reason?: string; describe?: (input: unknown) => string } {
   const denied = matchRule(policy.deny, toolName, renderedInput);
   if (denied) return { action: "deny", reason: denied.reason };
   const held = matchRule(policy.requireApproval, toolName, renderedInput);
-  if (held) return { action: "approval", reason: held.reason };
+  if (held) {
+    const describe = (held as { describe?: (input: unknown) => string }).describe;
+    return describe ? { action: "approval", reason: held.reason, describe } : { action: "approval", reason: held.reason };
+  }
   return { action: "allow" };
 }
 
@@ -145,7 +148,11 @@ export function createGuardrailExtension(opts: {
               channel,
               threadId,
               toolName: event.toolName,
-              detail: rendered.slice(0, 500),
+              // The rule's own description when it has one, redacted like
+              // everything else; otherwise the raw input.
+              detail: verdict.describe
+                ? gatekeeper.redact(verdict.describe(event.input)).slice(0, 1500)
+                : rendered.slice(0, 500),
               reason: `${verdict.reason} - approval required`,
             })
             .catch(() => false);

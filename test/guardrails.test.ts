@@ -119,6 +119,13 @@ describe("decide", () => {
     });
   });
 
+  test("hands back a rule's describe, which renders the real input for the approver", () => {
+    const input = { path: "entities/people/dana.md", reason: "new teammate", content: "---\nname: Dana\n---" };
+    const verdict = decide(policy, "memory_write", render(input));
+    assert.equal(verdict.action, "approval");
+    assert.match(verdict.describe!(input), /^Remember in entities\/people\/dana\.md: new teammate\n\n---\nname: Dana/);
+  });
+
   test("allows what no rule names, with no reason attached", () => {
     assert.deepEqual(decide(policy, "read", render({ path: "README.md" })), { action: "allow" });
   });
