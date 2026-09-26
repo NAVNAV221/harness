@@ -20,6 +20,10 @@ Constraints:
 - `deny` is for what must never happen even if a human asks. `requireApproval` is
   for what a human may authorize. If you are unsure which list a rule belongs in,
   ask me - the difference is the whole design.
+- An approval rule whose input a person cannot read at a glance gets a
+  `describe(input)` that renders the call from its real fields. Never from a
+  field the model writes for the purpose: the person must approve what the
+  tool will do, not what the model says it will do.
 - The block message tells the model why it was blocked and that it must not
   retry. A model that does not know why will try again differently, which is
   worse than trying again identically.

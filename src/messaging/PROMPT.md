@@ -48,16 +48,71 @@ Each of these cost a debugging session the first time. Build them in.
   processes is only as good as this check.
 - **Convert Markdown to the platform's markup** in `send`. Models write
   `**bold**` and `[text](url)`; Slack shows the asterisks and pastes the URL.
-  Leave code spans and blocks untouched.
+  For Slack mrkdwn: `**x**` to `*x*`, `[t](u)` to `<u|t>`, `# Heading` lines to
+  `*Heading*`, a bare user id to `<@U...>`. Split the text on code spans and
+  fenced blocks first and convert only the parts outside them, or a command in
+  backticks gets mangled.
+- **Accept the message subtypes that are still the person talking.** Slack
+  sends a message with a file attached as `file_share`, and "also send to
+  channel" as `thread_broadcast`. An adapter that drops every subtype drops
+  those too, with no trace: seen live, a long reply with a file was simply
+  never answered. Accept those, keep ignoring edits and deletes, and log the
+  subtype (never the body) of anything else you skip.
+- **Forwarded messages and files are content.** A forward arrives as an
+  attachment with its own author, link and text; append them to the message
+  text so the model sees them. Read small text files with the platform's file
+  scope, and say in the text when one could not be read. Slack without
+  `files:read` answers 200 with its HTML login page, not an error: treat an
+  HTML body as a failure.
+- **Stop words are handled at once, not queued.** "stop" or "cancel" alone in a
+  conversation (plus the words your people actually use, in their languages),
+  and the platform's own stop button (Slack's `agent_session_stopped` on agent
+  threads, which the app must subscribe to), call `handlers.onStop` directly.
+  Through the conversation's queue, the stop waits for the turn it is meant to
+  stop. With nothing running, say so.
+- **Show that a turn is working even without tool calls.** A minute of model
+  time with no tool call shows nothing, and people assume it died. Open one
+  progress row when the message arrives and close it with the reply.
+- **A redaction list built from config values must skip addresses.** A scrubber
+  that hides every value in the env file hid `*_URL` values too, and cut the
+  workspace host out of every link the harness sent. Skip keys ending in
+  `_URL`, and values too short to be secrets.
 - **Progress (`progress?`) is best effort and ordered.** Parallel tool calls
   emit their rows at the same instant. On a streaming API whose first call
   creates the message, two unchained writes each create one, and the first is
   orphaned forever. Chain every write per conversation. Streams also expire
   during a long quiet tool call: reopen once, then give up quietly. A progress
-  failure must never cost the owner the reply.
+  failure must never cost the owner the reply. Slack's `chat.appendStream` task
+  rows cap each chunk at 256 characters: clip the summary, not the call.
 - **`post?` posts only where the harness may talk.** It is the one outbound path
   that is not a reply; resolve its destination at startup from the spec, never
   from an argument.
+- **Buttons that are not approvals must not block a turn.** `requestApproval`
+  blocks by design. A card with its own buttons (accept a proposal, send a
+  draft) is different: post it, return, and handle the click later in code,
+  checking the clicker is the owner. If the spec needs this, it is an interface
+  change: add `postCard` / `updateCard` to the adapter and `onAction` to the
+  handlers, the CLI adapter in the same commit, and keep cards to the one
+  destination `post` uses. The model never gets a tool that clicks.
+
+## Conversations after a restart
+
+`src/harness.ts` keeps each conversation's pi session in memory
+(`SessionManager.inMemory()`). A restart forgets them: the next reply in an old
+thread starts a session that has never seen the thread, and the model answers
+the last message with no idea what came before. With the drain on shutdown,
+deploys no longer cut turns off, which makes this the next thing people notice.
+
+TODO, not built in the skeleton. Pick one when the spec says threads outlive
+deploys:
+- persist pi sessions per conversation key (a file-backed `SessionManager` under
+  the memory volume) and reopen the one for a key on its first message, or
+- on the first message for a key this process has not seen, fetch the thread
+  from the platform (for Slack, `conversations.replies`) and prepend it to the
+  prompt, clipped and with the harness's own messages marked as its own.
+
+The first keeps tool results; the second needs no storage and also covers
+threads that began before the harness existed.
 
 Add the platform SDK to `package.json`, add the env vars to `.env.example` with
 empty values, and add a short section to the README saying what a first-time

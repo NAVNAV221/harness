@@ -17,7 +17,10 @@ Constraints:
 - Never trust a path that came from the model. See `safePath` in
   `src/memory/index.ts` for the pattern.
 - A tool that writes, deletes, spends money or is visible outside the team goes
-  in `requireApproval` in `src/guardrails/policy.ts` in the same change.
+  in `requireApproval` in `src/guardrails/policy.ts` in the same change, with a
+  `describe(input)` that renders what will actually happen from the real
+  fields ("invite Dana and Sam to Sync, Tue 10:00, Google emails both"). People
+  approve JSON without reading it.
 - Errors are returned as content, not thrown. A thrown error ends the turn; a
   returned one lets the model recover.
 
@@ -26,6 +29,12 @@ output feeds something with a fixed shape (a brief, a report), return the shape'
 rules with the data, and hand back ready-made citations (a link with its label)
 rather than ids and URLs the model has to assemble: left to assemble them, it
 pasted raw ids.
+
+Once every job the harness does has its own tool, take `bash` out of
+`tools` in `src/config.ts`. With the shell available the model uses it instead of
+the tools you built (seen live: `grep` over the data directory and `find /` over
+the whole disk instead of the search tool). Keep the bash deny rules as a
+backstop. The same goes for any general tool that shadows a specific one.
 
 Then run the adversarial pass: for every pair of tools now registered, show me
 the question that would make the model pick the wrong one, and the description

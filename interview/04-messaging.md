@@ -60,6 +60,12 @@ the harness open a conversation itself - a scheduled brief, a reminder - and
 must say where it may post. Get a yes or no for each, and for `post`, the one
 destination.
 
+**11. How does someone stop a turn, and what should a thread remember across a restart?**
+The words that mean stop to these people (in every language they use) and
+whether the platform has its own stop button. Then: when the harness restarts,
+does a reply in yesterday's thread continue the conversation, or start fresh?
+Continuing needs sessions persisted or the thread re-read from the platform.
+
 ## Non-negotiables for the implementation
 
 Whoever builds this adapter must follow these, and the spec must repeat them:
@@ -109,6 +115,10 @@ Write `spec/messaging.md`:
 ## Progress and first contact
 - progress: <yes | no, and how the platform shows it>
 - post: <no | yes, and the one destination>
+
+## Stop and restart
+- Stop words: <list> ; platform stop button: <event, or none>
+- Thread context after a restart: <fresh | persisted sessions | re-read from the platform>
 
 ## Never send outward
 - <rule>
