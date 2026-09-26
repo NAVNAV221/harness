@@ -3,6 +3,63 @@
 Installs update by the version in `.claude-plugin/plugin.json`. A change that
 does not bump it never reaches anyone who installed before it.
 
+## 0.4.0
+
+Lessons from running a harness built on this skeleton every day. Update with
+`/plugin marketplace update harness`, then `/plugin update harness`.
+
+**Fixed**
+- **Skills never reached the model.** The per-turn prompt rebuild in
+  `src/harness.ts` returned a whole system prompt, which replaces pi's, which is
+  where pi lists the skills. No skill was ever visible and nothing failed.
+  `withSkills()` appends the list again; a test drives the hook through a real
+  pi session. Scaffolded before 0.4.0? Apply the same change to your
+  `src/harness.ts` and `src/system-prompt/index.ts`.
+- The reply is the turn's last assistant message that said something, not every
+  message joined: the model's narration before tool calls leaked into replies.
+- An empty turn says so instead of "(no reply)".
+- The example skill's description was cut short by YAML at an unquoted ` #`.
+- The example memory named the plugin's author; it is a generic `owner.md`.
+
+**Code**
+- `Harness.stop()` and `AdapterHandlers.onStop?`: abort one conversation's
+  running turn, called by the adapter outside that conversation's queue.
+- Shutdown drains: no new turns, running ones get `DRAIN_SECONDS` (90), then
+  each is aborted with a "send it again" reply. A second signal exits at once.
+- `requireApproval` rules take an optional `describe(input)`, so the approver
+  reads the real call instead of JSON.
+- `src/skills/validate.ts`: name, description length, an unquoted ` #`, and
+  every tool a skill names must be enabled. Run over `skills/` by `npm test`.
+- `npm run privacy:check` and optional `.githooks/`: real-looking Slack ids,
+  non-example emails, and terms from a gitignored denylist, in tracked files,
+  staged files or a commit message.
+
+**New optional modules** (interview, build prompt and command; no code)
+- `improve`: mine many sessions at the tool-call level for misrouted skills,
+  errors, empty results, reworded retries and corrections; propose skill and
+  tool-description changes, checked in code and by the reflection guard,
+  accepted by the owner, applied under memory with a snapshot and a revert.
+- `dream`: nightly memory consolidation proposing merges, contradictions,
+  prunes, promotions and summary fixes, each backed by a quote verified
+  verbatim; applied or discarded by the owner.
+
+**Build prompts and interviews**
+- Every tracked file must be usable by a stranger: instance data lives in
+  gitignored config, never in code, specs, tests or commit messages. In
+  AGENTS.md, every build prompt, and the AGENTS.md init writes.
+- Skills: "Use when ... Not for ..." descriptions, procedures out of the system
+  prompt behind a routing note, scheduled messages that name their skill, the
+  collision pass as a table; the interview asks what else starts a procedure.
+- Messaging: accepted subtypes (`file_share`, `thread_broadcast`), forwards and
+  files as content, stop words and the platform stop button, a row for turns
+  with no tool calls, mrkdwn details, config scrubbers that skip `*_URL`,
+  non-blocking cards as a deliberate interface change, and thread context
+  after a restart (a TODO with two fixes); the interview asks about both.
+- Tools: take `bash` away once every job has a tool; `describe` for approvals.
+- Deployment: stop timeouts longer than the drain, restart when idle with a
+  busy marker, `OnCalendar` timers, never `source` an env file, one env file
+  per process; the interview asks what a deploy does to a running turn.
+
 ## 0.3.0
 
 Lessons from building a real harness on this skeleton: a Slack assistant with an

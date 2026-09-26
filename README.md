@@ -67,8 +67,9 @@ Start with:
 4. [`src/memory/index.ts`](src/memory/index.ts) - stored knowledge, search, and visible truncation.
 5. [`src/reflection/`](src/reflection/) - session lessons proposed for human review.
 
-The test suite currently has 93 tests covering guardrails, memory, configuration,
-and reflection. To see the policy decide real tool calls without a model:
+The test suite currently has 137 tests covering guardrails, memory, configuration,
+reflection, skills, and what a turn replies when it is stopped or cut off by a
+restart. To see the policy decide real tool calls without a model:
 
 ```bash
 npm run guardrail:demo
@@ -180,9 +181,14 @@ you need.
 - Filesystem memory with entities, transcripts, search, and visible truncation.
 - Tool-call denial and approval, sender and channel admission, rate limiting, and
   outbound secret redaction.
-- Skills loaded with progressive disclosure.
+- Skills loaded with progressive disclosure, kept visible after every per-turn
+  prompt rebuild, and validated against the tools that exist.
+- A reply that is the turn's final message, a `stop` that aborts one
+  conversation's turn, and a drain on shutdown so a deploy does not cut a turn
+  off.
 - Session reflection that proposes changes for human review.
-- Tests for the shipped guardrails, memory, configuration, and reflection.
+- Tests for the shipped guardrails, memory, configuration, reflection, skills
+  and turn handling, and a privacy check for instance data.
 
 Run it locally after configuring a model credential in `.env` or through pi's
 `~/.pi/agent/auth.json`:
