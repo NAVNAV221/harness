@@ -42,7 +42,7 @@ purpose is a folder.
 
 ## Optional modules
 
-Three interviews add something the skeleton does not ship, and each starts by
+Five interviews add something the skeleton does not ship, and each starts by
 asking whether this harness needs it at all:
 
     08-deployment   run it unattended: approval path, persistence, credentials
@@ -52,6 +52,12 @@ asking whether this harness needs it at all:
     10-derive       an ETL from the event log to memory: commitments,
                     decisions, each citing the events it came from
                                                       ->  /harness:build-derive
+    11-improve      mine many sessions at the tool-call level and propose
+                    skill and tool-description changes the owner accepts
+                                                      ->  /harness:build-improve
+    12-dream        a nightly memory consolidation, every change backed by
+                    a verbatim quote, applied or discarded by the owner
+                                                      ->  /harness:build-dream
 
 Skip them until the harness spec gives a reason. `/harness:status` reports them
 as not chosen rather than as gaps.

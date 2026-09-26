@@ -32,5 +32,11 @@ Constraints:
 - The accept script must stay able to show a diff without applying it. The
   default path is read, then decide.
 
+Reflection reads one conversation's text. If the owner wants the harness to
+improve its skills and tool descriptions from how it is actually used, across
+many sessions and at the tool-call level, that is the optional `improve` module
+(`/harness:interview improve`), which reuses this guard. Do not grow this module
+into it.
+
 Then run one session, generate a real proposal, and show me both the proposal and
 what `npm run reflect:accept <id>` would do with it.

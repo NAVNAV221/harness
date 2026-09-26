@@ -107,11 +107,20 @@ capabilities as not built. Add one module at a time:
 /harness:build-messaging slack   # implement from that spec
 ```
 
-Two modules are optional and ship as an interview and a build prompt only:
-deployment, for running unattended; an event log, an append-only searchable
-record of what the harness did and read; and derive, which turns that log into
-memory entities such as commitments, each citing the events it came from. `/harness:status` reports them as not
-chosen until your spec gives a reason for them.
+Five modules are optional and ship as an interview and a build prompt only:
+
+- **deployment**, for running unattended;
+- **eventlog**, an append-only searchable record of what the harness did and read;
+- **derive**, which turns that log into memory entities such as commitments,
+  each citing the events it came from;
+- **improve**, which mines many sessions at the tool-call level (misrouted
+  skills, empty results, reworded retries, corrections) and proposes skill and
+  tool-description changes that the owner accepts and can revert;
+- **dream**, a nightly memory consolidation that proposes merges and fixes,
+  each backed by a quote verified verbatim, for the owner to apply or discard.
+
+`/harness:status` reports them as not chosen until your spec gives a reason for
+them.
 
 `/plugin update` may improve the interviews. It never modifies the scaffolded
 code you own.

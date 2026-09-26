@@ -15,12 +15,14 @@ messaging, guardrails, skills, reflection - report:
   `src/tools/index.ts`, or an adapter not in `src/messaging/index.ts`, is not wired.
 
 Then the optional modules, deployment (`spec/deployment.md`, `deploy/`), event
-log (`spec/eventlog.md`, `src/eventlog/`) and derive (`spec/derive.md`,
-`src/derive/`). For each, one line: not chosen,
-specified, or built. Not chosen is not a gap. It becomes one only when
-`spec/harness.md` implies the module - it names a VM or a container, or says
-memory is derived from sources (event log, and then derive), or asks to debug what the harness did - and
-then name the interview that starts it.
+log (`spec/eventlog.md`, `src/eventlog/`), derive (`spec/derive.md`,
+`src/derive/`), improve (`spec/improve.md`, `src/improve/`) and dream
+(`spec/dream.md`, `src/dream/`). For each, one line: not chosen, specified, or
+built. Not chosen is not a gap. It becomes one only when `spec/harness.md`
+implies the module - it names a VM or a container, or says memory is derived
+from sources (event log, and then derive), or asks to debug what the harness
+did, or to have it improve its own skills from use (improve) or keep a large
+memory tidy (dream) - and then name the interview that starts it.
 
 Then, in order of what would improve this harness most:
 
