@@ -28,7 +28,7 @@ import {
 import type { HarnessConfig } from "./config.ts";
 import { Memory } from "./memory/index.ts";
 import { createTools } from "./tools/index.ts";
-import { buildSystemPrompt } from "./system-prompt/index.ts";
+import { buildSystemPrompt, withSkills } from "./system-prompt/index.ts";
 import { createGuardrailExtension, Gatekeeper, policy } from "./guardrails/index.ts";
 import type { IncomingMessage, MessagingAdapter } from "./messaging/types.ts";
 
@@ -211,15 +211,25 @@ export class Harness {
 
     // Part 5, the live half. The system prompt is rebuilt before every agent run
     // so the memory index reflects anything written since the last turn.
+    //
+    // A returned systemPrompt REPLACES pi's, and pi's is where the skills block
+    // lives. Rebuilding without it hid every skill from the model from the first
+    // turn on, silently: nothing errors, no SKILL.md is ever read. withSkills puts
+    // the block back from the options pi hands the hook. test/skills.test.ts
+    // runs this hook through a real session to hold it.
     const freshContext: InlineExtension = {
       name: "context-refresh",
       factory: (pi) => {
-        pi.on("before_agent_start", async () => ({
-          systemPrompt: buildSystemPrompt(this.memory, {
-            channel: message.channel,
-            speaker: message.sender.display,
-            platform: this.adapter.name,
-          }),
+        pi.on("before_agent_start", async (event) => ({
+          systemPrompt: withSkills(
+            buildSystemPrompt(this.memory, {
+              channel: message.channel,
+              speaker: message.sender.display,
+              platform: this.adapter.name,
+            }),
+            event.systemPromptOptions?.skills,
+            event.systemPromptOptions?.selectedTools,
+          ),
         }));
       },
     };
