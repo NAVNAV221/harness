@@ -4,6 +4,13 @@ Read `spec/eventlog.md`. If it is not there, run `/harness:interview eventlog`
 first. This module is optional; do not build it for a harness whose spec does not
 ask for it.
 
+**Instance data stays out of tracked files.** Owner and user ids, workspace
+names, people's names, real messages, internal hosts and deploy notes go in
+gitignored config (`.env`, `~/.config/<harness>/`) read at run time; specs name
+the variable, not the value, and tests use synthetic fixtures. When a value is
+dynamic or specific to this owner, say so and ask where it lives rather than
+writing it in. `npm run privacy:check` before you commit.
+
 The skeleton ships no event log code on purpose. What gets logged, at what
 detail, and from which sources is the whole design, and a default would be a
 record nobody chose of data nobody agreed to keep.

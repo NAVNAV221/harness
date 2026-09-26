@@ -3,6 +3,13 @@
 Read `spec/guardrails.md`. If it is not there, run `/harness:interview guardrails`
 first.
 
+**Instance data stays out of tracked files.** Owner and user ids, workspace
+names, people's names, real messages, internal hosts and deploy notes go in
+gitignored config (`.env`, `~/.config/<harness>/`) read at run time; specs name
+the variable, not the value, and tests use synthetic fixtures. When a value is
+dynamic or specific to this owner, say so and ask where it lives rather than
+writing it in. `npm run privacy:check` before you commit.
+
 Then rewrite `src/guardrails/policy.ts` to match the spec exactly.
 
 The rule that makes this module worth anything: **a rule in the system prompt is

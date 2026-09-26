@@ -2,6 +2,13 @@
 
 Read `spec/tools.md`. If it is not there, run `/harness:interview tools` first.
 
+**Instance data stays out of tracked files.** Owner and user ids, workspace
+names, people's names, real messages, internal hosts and deploy notes go in
+gitignored config (`.env`, `~/.config/<harness>/`) read at run time; specs name
+the variable, not the value, and tests use synthetic fixtures. When a value is
+dynamic or specific to this owner, say so and ask where it lives rather than
+writing it in. `npm run privacy:check` before you commit.
+
 Then add each tool to `src/tools/`, one file per coherent group, and register it
 in `src/tools/index.ts`. Follow `memory-tools.ts` exactly: `defineTool` from
 `@earendil-works/pi-coding-agent`, TypeBox schemas, a `promptSnippet` for the

@@ -25,6 +25,14 @@ prompt, tools, memory, messaging, guardrails, skills and reflection.
   in a slash command that is not in the prompt file it points at.
 - **Guardrails are code.** Anything enforceable belongs in
   `src/guardrails/policy.ts`, not in `SYSTEM_PROMPT.md`.
+- **Every tracked file must be usable by a stranger.** This repo is public and
+  every file in it is copied into other people's harnesses. Instance data -
+  owner ids, workspace names, people's names, real messages, internal hosts,
+  deploy notes - lives in gitignored config (`.env`, `~/.config/`), never in
+  code, specs, tests, examples or commit messages. Tests use synthetic fixtures.
+  When a lesson comes from a real harness, keep the lesson and drop the
+  instance. `npm run privacy:check` catches the common cases; with a
+  `.privacy-denylist` of your own terms it catches yours.
 - **No em dashes** in prose. Regular hyphens.
 - **Comments explain the decision**, not the syntax. Every module header says
   what the module is for and what it deliberately does not do.

@@ -4,6 +4,13 @@ Read `spec/system-prompt.md`. If it is not there, run `/harness:interview system
 first - do not write a system prompt from your own assumptions about what this
 harness is for.
 
+**Instance data stays out of tracked files.** Owner and user ids, workspace
+names, people's names, real messages, internal hosts and deploy notes go in
+gitignored config (`.env`, `~/.config/<harness>/`) read at run time; specs name
+the variable, not the value, and tests use synthetic fixtures. When a value is
+dynamic or specific to this owner, say so and ask where it lives rather than
+writing it in. `npm run privacy:check` before you commit.
+
 Then rewrite `src/system-prompt/SYSTEM_PROMPT.md` from that spec.
 
 Constraints:

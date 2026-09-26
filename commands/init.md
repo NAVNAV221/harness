@@ -167,7 +167,8 @@ Copy from `${CLAUDE_PLUGIN_ROOT}` into the target directory.
 **Copy these** - they own and will modify them:
 
 ```
-src/  test/  memory/  skills/  spec/  learn/  deploy/  reflection/proposals/.gitkeep
+src/  test/  memory/  skills/  spec/  learn/  deploy/  scripts/  .githooks/
+reflection/proposals/.gitkeep
 package.json  tsconfig.json  .env.example  .gitignore
 Dockerfile  .dockerignore  compose.yaml
 ```
@@ -189,7 +190,12 @@ your own rather than copying them:
   to run it, and a pointer to `/harness:status`. Ten lines, not thirty.
 - **`AGENTS.md`** - house rules for whoever works in *their* harness: what it is
   for, that guardrails are enforced in `src/guardrails/policy.ts` and not in the
-  system prompt, and that `npm run typecheck` must pass. Do not copy the plugin's
+  system prompt, that `npm run typecheck` must pass, and that instance data
+  (their ids, workspace, people's names, real messages, internal hosts) lives
+  in gitignored config and never in code, specs, tests or commit messages,
+  with `npm run privacy:check` and the optional hooks in `.githooks/` to catch
+  it. Say this one even when the repo is private: private repos get shared,
+  forked and pasted into tickets. Do not copy the plugin's
   own `AGENTS.md`. That one is about maintaining the skeleton, and it would tell
   an agent working in their harness to keep the code small enough to throw away.
 

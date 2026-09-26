@@ -4,6 +4,13 @@ Read `spec/improve.md`. If it is not there, run `/harness:interview improve`
 first. Read `src/skills/validate.ts` and `src/reflection/guard.ts`: this module
 reuses both, and must not loosen either.
 
+**Instance data stays out of tracked files.** Owner and user ids, workspace
+names, people's names, real messages, internal hosts and deploy notes go in
+gitignored config (`.env`, `~/.config/<harness>/`) read at run time; specs name
+the variable, not the value, and tests use synthetic fixtures. When a value is
+dynamic or specific to this owner, say so and ask where it lives rather than
+writing it in. `npm run privacy:check` before you commit.
+
 The skeleton ships no improve code on purpose. What counts as a misroute, and
 where an accepted change may live, are the design.
 

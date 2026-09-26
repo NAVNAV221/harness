@@ -4,6 +4,13 @@ Read `spec/dream.md`. If it is not there, run `/harness:interview dream` first.
 Read `src/memory/index.ts`: a dream proposes files in exactly the shape memory
 already reads.
 
+**Instance data stays out of tracked files.** Owner and user ids, workspace
+names, people's names, real messages, internal hosts and deploy notes go in
+gitignored config (`.env`, `~/.config/<harness>/`) read at run time; specs name
+the variable, not the value, and tests use synthetic fixtures. When a value is
+dynamic or specific to this owner, say so and ask where it lives rather than
+writing it in. `npm run privacy:check` before you commit.
+
 The skeleton ships no dream code on purpose, like the event log: which
 operations, what is off limits and how the owner decides are the design.
 

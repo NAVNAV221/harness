@@ -199,6 +199,15 @@ system prompt stops it before any tool call is made. The demo sends tool calls
 straight through the policy, which pauses destructive and outward-facing commands
 for approval whether or not the model cooperates.
 
+## Keeping instance data out of the repo
+
+Every tracked file should be usable by a stranger: owner ids, workspace names,
+people's names, real messages and internal hosts live in gitignored config, not
+in code, specs, tests or commit messages. `npm run privacy:check` flags
+real-looking Slack ids, non-example email addresses, and any term in your own
+gitignored `.privacy-denylist` (or `~/.config/harness/privacy-denylist`).
+`git config core.hooksPath .githooks` runs it on every commit, message included.
+
 ## Security before deployment
 
 The shipped policy is a local example, not a production security boundary.

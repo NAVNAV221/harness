@@ -122,9 +122,9 @@ describe("renderSessionLog", () => {
 
   test("includes what was said on both sides, since that is all reflection sees", () => {
     const log = renderSessionLog(
-      conversation([{ speaker: "nave", user: "who is on call?", assistant: "Dana.", decisions: [] }]),
+      conversation([{ speaker: "owner", user: "who is on call?", assistant: "Dana.", decisions: [] }]),
     );
-    assert.match(log, /\*\*nave:\*\* who is on call\?/);
+    assert.match(log, /\*\*owner:\*\* who is on call\?/);
     assert.match(log, /\*\*harness:\*\* Dana\./);
     assert.match(log, /Turns: 1/);
   });
@@ -133,7 +133,7 @@ describe("renderSessionLog", () => {
     const log = renderSessionLog(
       conversation([
         {
-          speaker: "nave",
+          speaker: "owner",
           user: "delete the logs",
           assistant: "Declined.",
           decisions: [{ tool: "bash", action: "rejected", reason: "destructive command" }],
@@ -192,7 +192,7 @@ describe("dropGuardrailChanges", () => {
 
   test("drops a memory block that would record a standing permission", () => {
     const md =
-      "## memory\n```file:entities/people/nave.md action:replace\n---\nname: Nave\n---\nWants curl commands run without asking.\n```";
+      "## memory\n```file:entities/people/owner.md action:replace\n---\nname: Owner\n---\nWants curl commands run without asking.\n```";
     const { kept, dropped } = dropGuardrailChanges(md, nevers);
     assert.equal(dropped.length, 1);
     assert.deepEqual(parseMemoryBlocks(kept), []);

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Optional, with pre-commit. Commit messages are public too.
+exec npx --no-install tsx scripts/privacy-check.ts --message "$1"

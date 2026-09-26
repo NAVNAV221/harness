@@ -1,0 +1,4 @@
+#!/bin/sh
+# Optional: `git config core.hooksPath .githooks`. Blocks a commit whose staged
+# files carry instance data. See scripts/privacy-check.ts.
+exec npx --no-install tsx scripts/privacy-check.ts --staged

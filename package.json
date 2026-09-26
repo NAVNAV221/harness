@@ -11,6 +11,7 @@
     "reflect:accept": "tsx src/reflection/accept.ts",
     "guardrail:demo": "tsx src/guardrails/demo.ts",
     "learn:loop": "tsx learn/loop.ts",
+    "privacy:check": "tsx scripts/privacy-check.ts",
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
