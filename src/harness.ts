@@ -32,6 +32,32 @@ import { buildSystemPrompt, withSkills } from "./system-prompt/index.ts";
 import { createGuardrailExtension, Gatekeeper, policy } from "./guardrails/index.ts";
 import type { IncomingMessage, MessagingAdapter } from "./messaging/types.ts";
 
+/** Posted when the model ends a turn with no text, instead of an empty message. */
+export const EMPTY_TEXT = "I finished without an answer. Say 'continue', or rephrase.";
+/** Posted to a message that arrives while the process is shutting down. */
+export const DRAINING_TEXT = "I'm restarting right now. Send this again in a minute.";
+/** Posted when a restart cut a running turn off before it could answer. */
+export const RESTARTED_TEXT = "I was restarted in the middle of this. Send it again, or say 'continue'.";
+
+/** The session key. A channel is a conversation; a thread is its own. */
+export function conversationKey(channel: string, threadId?: string): string {
+  return threadId ? `${channel}#${threadId}` : channel;
+}
+
+/**
+ * The text of one assistant message. A turn ends several of them: narration
+ * before a tool call ("Now let me check memory..."), then maybe more, then the
+ * answer. The harness keeps only the last one that said something, because
+ * sending every message leaked that narration into the reply.
+ */
+export function messageText(content: unknown): string {
+  if (!Array.isArray(content)) return "";
+  return (content as { type: string; text?: string }[])
+    .filter((part) => part.type === "text" && part.text?.trim())
+    .map((part) => part.text!.trim())
+    .join("\n\n");
+}
+
 export interface Turn {
   speaker: string;
   user: string;
@@ -67,6 +93,12 @@ export function summarizeArgs(args: unknown, max = 200): string {
 
 export class Harness {
   private conversations = new Map<string, Conversation>();
+  /** Turns in flight, by conversation key, and why one ended early if it did. */
+  private running = new Map<string, { stopped: boolean; interrupted: boolean }>();
+  /** Messages being handled right now. The drain waits for this to reach zero. */
+  private inFlight = 0;
+  private idleWaiters: (() => void)[] = [];
+  private draining = false;
   private gatekeeper = new Gatekeeper(policy);
   private modelRuntime: ModelRuntime | undefined;
 
@@ -80,6 +112,56 @@ export class Harness {
     return [...this.conversations.values()];
   }
 
+  get busy(): number {
+    return this.inFlight;
+  }
+
+  /**
+   * Stop the turn running in one conversation: abort its session and keep what
+   * was said so far. Other conversations are untouched. An adapter calls this
+   * the moment it sees "stop" (or the platform's stop button), never through
+   * the conversation's queue, which would wait for the very turn it stops.
+   */
+  async stop(channel: string, threadId?: string): Promise<boolean> {
+    const key = conversationKey(channel, threadId);
+    const turn = this.running.get(key);
+    const conversation = this.conversations.get(key);
+    if (!turn || !conversation) return false;
+    turn.stopped = true;
+    await conversation.session.abort().catch(() => {});
+    return true;
+  }
+
+  /**
+   * Shutdown, part one: take no new turns and wait for the running ones.
+   * Resolves true when idle, false when `timeoutMs` ran out first. Without
+   * this, a deploy's SIGTERM disposes a session mid-turn and the person who
+   * asked gets an empty reply and a lost request.
+   */
+  async drain(timeoutMs: number): Promise<boolean> {
+    this.draining = true;
+    if (this.inFlight === 0) return true;
+    let timer: NodeJS.Timeout | undefined;
+    const idle = new Promise<boolean>((resolve) => this.idleWaiters.push(() => resolve(true)));
+    const late = new Promise<boolean>((resolve) => (timer = setTimeout(() => resolve(false), timeoutMs)));
+    const result = await Promise.race([idle, late]);
+    clearTimeout(timer);
+    return result;
+  }
+
+  /**
+   * Shutdown, part two, when the drain ran out: abort every running turn so
+   * each one says in its own conversation that it was cut off, then give those
+   * replies `graceMs` to go out before the sessions are disposed.
+   */
+  async interrupt(graceMs = 5_000): Promise<void> {
+    for (const [key, turn] of this.running) {
+      turn.interrupted = true;
+      await this.conversations.get(key)?.session.abort().catch(() => {});
+    }
+    await this.drain(graceMs);
+  }
+
   /**
    * Start a conversation: post `header` as a new top-level message, then run a
    * turn on `prompt` whose reply lands in that message's thread. For a harness
@@ -91,6 +173,7 @@ export class Harness {
    * the inbox guardrail has a side door.
    */
   async initiate(header: string, prompt: string): Promise<{ channel: string; threadId: string }> {
+    if (this.draining) throw new Error("shutting down; not starting a conversation");
     if (!this.adapter.post) throw new Error(`the ${this.adapter.name} adapter cannot start a conversation`);
     const where = await this.adapter.post(header);
     await this.handleMessage(
@@ -107,6 +190,19 @@ export class Harness {
   }
 
   async handleMessage(message: IncomingMessage, opts: { internal?: boolean } = {}): Promise<void> {
+    if (this.draining) {
+      await this.adapter.send({ channel: message.channel, threadId: message.threadId, text: DRAINING_TEXT });
+      return;
+    }
+    this.inFlight++;
+    try {
+      await this.handleTurn(message, opts);
+    } finally {
+      if (--this.inFlight === 0) for (const wake of this.idleWaiters.splice(0)) wake();
+    }
+  }
+
+  protected async handleTurn(message: IncomingMessage, opts: { internal?: boolean }): Promise<void> {
     // Guardrail, inbox side. Before a single token is spent. An internal turn
     // never came through the inbox, so there is nothing to admit; everything
     // from a platform still goes through here.
@@ -152,23 +248,28 @@ export class Harness {
       }
       if (event.type !== "message_end") return;
       const ended = event.message as { role?: string; content?: unknown };
-      if (ended.role !== "assistant" || !Array.isArray(ended.content)) return;
-      for (const part of ended.content as { type: string; text?: string }[]) {
-        // One turn can end several assistant messages (text, tool call, more
-        // text). Keep them apart, or "...10:00).Saved:" runs two thoughts together.
-        if (part.type === "text" && part.text) assistantText += (assistantText ? "\n\n" : "") + part.text;
-      }
+      if (ended.role !== "assistant") return;
+      // The last message that said something is the reply; see messageText.
+      const text = messageText(ended.content);
+      if (text) assistantText = text;
     });
 
+    const turn = { stopped: false, interrupted: false };
+    this.running.set(conversation.key, turn);
     try {
       await conversation.session.prompt(message.text);
     } catch (error) {
       assistantText = `The model call failed: ${error instanceof Error ? error.message : String(error)}`;
     } finally {
+      this.running.delete(conversation.key);
       unsubscribe();
     }
+    if (turn.interrupted) assistantText = RESTARTED_TEXT;
+    else if (turn.stopped) {
+      assistantText = `Stopped.${assistantText.trim() ? ` What I had so far:\n\n${assistantText.trim()}` : ""}`;
+    }
 
-    const reply = this.gatekeeper.redact(assistantText.trim() || "(no reply)");
+    const reply = this.gatekeeper.redact(assistantText.trim() || EMPTY_TEXT);
     await this.adapter.send({ channel: message.channel, threadId: message.threadId, text: reply });
 
     this.memory.appendTranscript({
@@ -186,8 +287,8 @@ export class Harness {
     });
   }
 
-  private async getConversation(message: IncomingMessage): Promise<Conversation> {
-    const key = message.threadId ? `${message.channel}#${message.threadId}` : message.channel;
+  protected async getConversation(message: IncomingMessage): Promise<Conversation> {
+    const key = conversationKey(message.channel, message.threadId);
     const existing = this.conversations.get(key);
     if (existing) return existing;
 

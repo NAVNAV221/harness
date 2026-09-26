@@ -64,6 +64,14 @@ export interface AdapterHandlers {
   onMessage(message: IncomingMessage): Promise<void>;
   /** Called when the adapter shuts down cleanly, so the harness can reflect. */
   onShutdown(): Promise<void>;
+  /**
+   * Stop the turn running in this conversation ("stop" in the thread, or the
+   * platform's own stop button). Call it the moment the request arrives, never
+   * through the conversation's queue: queued, it waits for the very turn it is
+   * meant to stop. Resolves true if a turn was running. The CLI adapter does not
+   * call it, because it reads the next line only after the turn ends.
+   */
+  onStop?(channel: string, threadId?: string): Promise<boolean>;
 }
 
 export interface MessagingAdapter {

@@ -37,6 +37,12 @@ async function main(): Promise<void> {
   const shutdown = async () => {
     if (shuttingDown) return;
     shuttingDown = true;
+    // Let turns in flight finish before the sessions go away; a message that
+    // arrives meanwhile is told to resend. Under systemd, TimeoutStopSec must
+    // be longer than DRAIN_SECONDS or the unit is SIGKILLed mid-drain.
+    const drainMs = Number(process.env.DRAIN_SECONDS ?? 90) * 1000;
+    if (harness.busy) console.log(`\n  waiting up to ${drainMs / 1000}s for ${harness.busy} running turn(s); signal again to quit now`);
+    if (!(await harness.drain(drainMs))) await harness.interrupt();
     for (const conversation of harness.openConversations) {
       const result = await reflect(config, memory, conversation).catch((error) => {
         console.error(`  reflection failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -49,11 +55,14 @@ async function main(): Promise<void> {
     process.exit(0);
   };
 
-  process.on("SIGINT", () => void shutdown());
-  process.on("SIGTERM", () => void shutdown());
+  // A second signal while draining means now.
+  const onSignal = () => (shuttingDown ? process.exit(1) : void shutdown());
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
 
   await adapter.start({
     onMessage: (message) => harness.handleMessage(message),
+    onStop: (channel, threadId) => harness.stop(channel, threadId),
     onShutdown: shutdown,
   });
 }
