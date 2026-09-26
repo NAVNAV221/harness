@@ -61,6 +61,46 @@ Your job is to make them match the spec, not to start over.
   _SYSTEMD_USER_UNIT=<unit>` reads them. Say which in the runbook.
 - **Two scheduled jobs that write the same state need a lock**, or a timer run
   and a manual backfill will race.
+- **Timers use `OnCalendar=`, not `OnUnitInactiveSec=`.** An inactive-sec timer
+  counts only from runs it started itself, so after enabling it (or after a
+  manual run) it may never fire. `OnCalendar=*:0/5` fires on the clock. Give a
+  timezone (`OnCalendar=Mon..Fri 08:30 Europe/London`) when the time means
+  something to a person, so the host's zone does not matter.
+
+## Deploys must not cut a turn off
+
+The harness drains on SIGTERM (`src/index.ts`): it stops taking turns, tells
+anyone who writes to resend in a minute, and waits up to `DRAIN_SECONDS`
+(default 90) for running turns before it aborts them with a "send it again"
+reply. Two things make that work deployed:
+
+- **The stop timeout must exceed the drain.** systemd's default is 90 seconds,
+  then SIGKILL: set `TimeoutStopSec=120` on the unit (Docker:
+  `stop_grace_period: 120s`; Kubernetes: `terminationGracePeriodSeconds`).
+  Otherwise the platform kills the drain it asked for.
+- **Restart when idle, not on push.** A deploy script that restarts the instant
+  new code lands still hits turns mid-flight; the drain then makes people wait
+  up to a minute and a half. If deploys are frequent, have the harness keep a
+  busy marker file while any turn runs (the conversations in it, written on
+  turn start and removed when the last one ends) and have the deploy wait for
+  it to go away, up to a limit, before restarting. After a crash, a marker left
+  on disk names the conversations that never got an answer: tell each one to
+  resend, once, on the next start.
+
+## Secrets on the host
+
+- **Never `source` an env file in a shell.** A value with a space in it runs as
+  a command, and bash prints the error with the value in it: seen live, a token
+  landed in a terminal and a log that way. Load env files with the runtime
+  (`node --env-file=...`, `process.loadEnvFile`), systemd's `EnvironmentFile=`,
+  or compose's `env_file:`. To check a file, print key names only
+  (`cut -d= -f1`), never values, and send a failing command's stderr to
+  `/dev/null` when it might echo one.
+- **One env file per process, holding only that process's credentials.** The
+  agent's unit gets the model and messaging credentials; an ingest or sender
+  process gets its own file with the tokens only it may hold. A process that
+  refuses to start when it finds a credential it must not have (the messaging
+  prompt says how) keeps the split honest after someone copies the wrong file.
 
 ## Then tell me two things
 

@@ -86,6 +86,13 @@ a localhost proxy that signs with the machine identity avoids minting one. A
 key file on a server is the credential most likely to outlive everyone's memory
 of it.
 
+**10. What happens to a turn that is running when you deploy?**
+The harness drains for `DRAIN_SECONDS` on SIGTERM. Ask how often they deploy and
+how long a turn can run: that sets the drain, the platform's stop timeout (it
+must be longer), and whether deploys should wait for the harness to be idle.
+Then ask how env files are loaded on the host. If the answer is `source`, say
+why not.
+
 ## Write the spec
 
 Write `spec/deployment.md`:
@@ -120,4 +127,9 @@ Write `spec/deployment.md`:
 
 ## On failure
 <restart policy, logs, who is paged>
+
+## Deploys
+- Drain: <DRAIN_SECONDS> ; stop timeout: <TimeoutStopSec or equivalent, longer>
+- Restart: <on push | when idle, waiting at most N seconds>
+- Env files: <loaded by what, one per process>
 ```
