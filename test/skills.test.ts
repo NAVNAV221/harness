@@ -17,7 +17,7 @@ import { loadSkillsFromDir, type AgentSession } from "@earendil-works/pi-coding-
 import { listSkills, referencedTools, validateSkill } from "../src/skills/validate.ts";
 import { withSkills } from "../src/system-prompt/index.ts";
 import { loadConfig } from "../src/config.ts";
-import { Memory } from "../src/memory/index.ts";
+import { Memory, parseFrontmatter } from "../src/memory/index.ts";
 import { Harness, type Conversation } from "../src/harness.ts";
 import type { IncomingMessage, MessagingAdapter } from "../src/messaging/types.ts";
 
@@ -32,6 +32,14 @@ describe("committed skills", () => {
       loaded.skills.map((s) => s.name).sort(),
       listSkills(config.skillsDir).map((s) => s.folder),
     );
+  });
+
+  test("pi reads the same description the file says (YAML did not cut it short)", () => {
+    const loaded = new Map(loadSkillsFromDir({ dir: config.skillsDir, source: "path" }).skills.map((s) => [s.name, s]));
+    for (const s of listSkills(config.skillsDir)) {
+      const raw = parseFrontmatter(s.content).fields.description?.trim().replace(/^(["'])(.*)\1$/, "$2");
+      assert.equal(loaded.get(s.folder)?.description, raw, s.folder);
+    }
   });
 
   test("each passes validation against the tools this harness enables", () => {
@@ -64,6 +72,8 @@ describe("validateSkill", () => {
     const long = ok.replace("Use when someone asks for a demo.", "x".repeat(1025));
     assert.ok(validateSkill("demo", long, tools).some((e) => e.includes("over 1024")));
     assert.deepEqual(validateSkill("demo", "no frontmatter", tools), ["no frontmatter (--- name/description ---)"]);
+    const hash = ok.replace("asks for a demo.", "asks what happened in #ops.");
+    assert.ok(validateSkill("demo", hash, tools).some((e) => e.includes("YAML reads as a comment")));
   });
 });
 

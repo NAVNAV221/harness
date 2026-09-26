@@ -39,7 +39,12 @@ was never built is a very convincing way to make a model hallucinate.
 
 **6. Which existing skill does this overlap with?**
 Two skills with overlapping descriptions means the model picks by coin flip. Same
-adversarial pass as tools: what request would make it open the wrong one?
+adversarial pass as tools: what request would make it open the wrong one? The
+answer becomes the description's "Not for ..." clause, naming the other skill.
+
+**7. Does anything start this procedure other than a person asking?**
+A schedule, a reminder, another process. That message should name the skill and
+use its description's words, or the routing is a guess.
 
 ## Write the spec
 
@@ -55,6 +60,11 @@ Write `spec/skills.md` with one section per skill:
 - Rules: <the mistakes to prevent, one per line>
 - Needs tools: <names, and whether they exist yet>
 - Distinguished from <other skill> by: <one line>
+- Started by: <people only, or which scheduled message>
+
+## Collisions
+| request | risk | fix |
+|---|---|---|
 ```
 
 Then create `skills/<name>/SKILL.md` with frontmatter (`name`, `description`) and

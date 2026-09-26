@@ -16,6 +16,12 @@ Constraints:
 - Any rule that can be enforced in `src/guardrails/policy.ts` should be enforced
   there and deleted from here.
 
+Procedures for one kind of request belong in skills, not here: this file is
+read every turn and a skill only when it is opened. Leave a one-paragraph routing
+note that names the skills and says the rules here win. See `skills/PROMPT.md`.
+If you change how the prompt is rebuilt per turn in `src/harness.ts`, keep the
+`withSkills` call: without it the model never sees a skill.
+
 When you are done, show me which lines would still matter if the model only read
 the first half of the file, and move anything else below them.
 

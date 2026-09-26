@@ -53,6 +53,10 @@ export function validateSkill(folder: string, content: string, tools: readonly s
   if (!description) errors.push("description is missing");
   else if (description.length > MAX_DESCRIPTION) {
     errors.push(`description is ${description.length} characters, over ${MAX_DESCRIPTION}`);
+  } else if (/\s#/.test(description) && !/^["']/.test(description)) {
+    // pi parses frontmatter as YAML, where " #" starts a comment: an unquoted
+    // "what happened in #ops" reached the model as "what happened in".
+    errors.push('description has an unquoted " #", which YAML reads as a comment and cuts off');
   }
   if (!body.trim()) errors.push("the body is empty");
   const known = new Set(tools);

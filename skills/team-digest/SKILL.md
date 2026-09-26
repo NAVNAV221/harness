@@ -1,6 +1,6 @@
 ---
 name: team-digest
-description: Summarise what happened in a channel over a period, grouped by person and decision. Use when someone asks what they missed, what was decided, or for a catch-up on a channel or date range.
+description: Use when someone asks what they missed, what was decided, or for a catch-up on a channel or date range ("what happened in ops this week", "catch me up"). Summarises by person and decision. Not for finding one message or one fact, which is a memory_search.
 ---
 
 # Team digest
